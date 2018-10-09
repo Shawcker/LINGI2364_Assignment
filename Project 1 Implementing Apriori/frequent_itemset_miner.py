@@ -62,28 +62,29 @@ def apriori(filepath, minFrequency):
     print("Not implemented")
 
 
-def depth_first(filepath, minFrequency):
+def alternative_miner(filepath, minFrequency):
     """Runs the alternative frequent itemset mining algorithm on the specified file with the given minimum frequency"""
     # TODO: either second implementation of the apriori algorithm or implementation of the depth first search algorithm
     original_dataset = Dataset(filepath)
     database = original_dataset.transactions
-    minFrequency = minFrequency * len(database)
+    total_number = len(database)
+    minFrequency = minFrequency * total_number
     item_list = original_dataset.items
     operation_list = [item for item in item_list]
     database = vertical_representation(item_list, database)
     # print('database: ', database)
     for item in item_list:
         candidate_list = [item]
-        depth_search(candidate_list, item, minFrequency, database)
+        depth_search(candidate_list, item, minFrequency, total_number, database)
 
 
-def depth_search(candidate_list, item, minFrequency, database):
+def depth_search(candidate_list, item, minFrequency,  total_number, database):
     """Undergoes depth first search"""
     operation_database = copy.deepcopy(database)
     support, projected = projected_database(item, operation_database)
     if support >= minFrequency:
-        # if len(candidate_list) == 1:
-        print('frequent item: ', candidate_list, 'fre: ', support)
+        print('{} ({})'.format(candidate_list, support / total_number))
+        # print('frequent item: ', candidate_list, 'fre: ', support / total_number)
         # print('projected: ', projected)
         # Create new item list
         length = len(projected)
@@ -96,7 +97,7 @@ def depth_search(candidate_list, item, minFrequency, database):
         for item in item_list:
             copy_candidate = copy.deepcopy(candidate_list)
             copy_candidate.append(item)
-            depth_search(copy_candidate, item, minFrequency, projected)
+            depth_search(copy_candidate, item, minFrequency, total_number, projected)
 
 
 def projected_database(item, database):
@@ -144,10 +145,10 @@ def vertical_representation(item_list, database):
 
 pwd = os.getcwd()
 Dataset_Path = "Datasets"
-Dataset_Name = "accidents.dat"
+Dataset_Name = "chess.dat"
 Dataset_Path = os.path.join(pwd, Dataset_Path, Dataset_Name)
 # print(Dataset_Path)
-depth_first(Dataset_Path, 0.9)
+alternative_miner(Dataset_Path, 0.9)
 
 # lista = [1, [-1], [-1], 5, 4, 6]
 # length = len(lista)
