@@ -130,13 +130,7 @@ class Dataset:
         """Returns the transaction at index i as an int array"""
         return self.transactions[i]
 
-
-def apriori(filepath, minFrequency):
-    """Runs the apriori algorithm on the specified file with the given minimum frequency"""
-    # TODO: implementation of the apriori algorithm
-    print("Not implemented")
-
-
+# alternative_miner
 def alternative_miner(filepath, minFrequency):
     """Runs the alternative frequent itemset mining algorithm on the specified file with the given minimum frequency"""
     # TODO: either second implementation of the apriori algorithm or implementation of the depth first search algorithm
@@ -215,79 +209,7 @@ def vertical_representation(item_list, database):
     return vert_item
 
 
-def sortTransaction(transaction):
-	#sort the transaction in order to be inserted in trie. Insertion sort 
-	# because most transactions should be small in practice
-	toSort = transaction
-	for i in range(1, len(toSort)):
-		val = toSort[i] 
-		j = i-1
-		while (j >= 0) and (val < toSort[j]): 
-			toSort[j+1] = toSort[j] 
-			j -= 1
-		toSort[j+1] = val
-	return toSort
-
-def frequencyCounter(results, layer, minFrequency, tree, N):
-	toDelete = []
-	layerIdx = layer - 1
-	for i in range(0, len(results[layerIdx])):
-		subset = results[layerIdx][i][0]
-		support = tree.nbOccurences(subset, tree.root)
-		freq = float(support)/float(N)
-		results[layerIdx][i][1] = freq
-		if freq < minFrequency:
-			toDelete.append(i)
-	i = 0
-	while i < len(toDelete):
-		del results[layerIdx][toDelete[i]-i]
-		i+=1
-
-def makeCombination(itemL1, prevLayerSet, layerNum, layerN):
-	newSet = [prevLayerSet[i] for i in range(0, len(prevLayerSet))]
-	newSet.append(itemL1)
-	sortTransaction(newSet)
-	for i in range(0, len(newSet)-1):
-		if newSet[i] == newSet[i+1]:
-			return None
-	for i in range(0, len(layerN)):
-		if layerN[i][0] == newSet:
-			return None
-	return newSet
-
-def makeLayer(results, layer, minFrequency, N): #N is the total number of transactions
-	layer1 = results[0]
-	prevLayerIdx = layer - 2
-	layerN = []
-	for i in range(0, len(results[prevLayerIdx])):
-		PrevFrequency = float(results[prevLayerIdx][i][1])
-		if PrevFrequency >= minFrequency:
-			for u in range(0, len(layer1)):
-				candidate = makeCombination(layer1[u][0][0], results[prevLayerIdx][i][0], layer, layerN)
-				if candidate is not None:
-					layerN.append([candidate, 0])
-	results.append(layerN)
-	return
-
-def prune(results, minFreq):
-	arr= []
-	for i in range(len(results)):
-		for j in range(len(results[i])):
-			if float(results[i][j][1]) >= float(minFreq):
-				arr.append([results[i][j][0], float(results[i][j][1])])
-	return arr
-
-def toString(results, freq):
-	# [<item 1>, <item 2>, ... <item k>] (<frequency>)
-	outString = "["
-	for layer in range(0, len(results)):
-		for i in range(0, len(results[layer])):
-			outString += str(results[layer][i][0]) +", "
-	outString = outString[:-2]
-	outString += "]"
-	outString += " (" + str(freq) + ")"
-	print(outString)
-
+# apriori
 def apriori(filepath, minFrequency):
 	"""Runs the apriori algorithm on the specified file with the given minimum frequency"""
 	tree = Trie()
@@ -310,17 +232,99 @@ def apriori(filepath, minFrequency):
 		frequencyCounter(results, layer, minFrequency, tree, N)
 		layer += 1
 	toString(results, minFrequency)
+
+	
+def sortTransaction(transaction):
+	#sort the transaction in order to be inserted in trie. Insertion sort 
+	# because most transactions should be small in practice
+	toSort = transaction
+	for i in range(1, len(toSort)):
+		val = toSort[i] 
+		j = i-1
+		while (j >= 0) and (val < toSort[j]): 
+			toSort[j+1] = toSort[j] 
+			j -= 1
+		toSort[j+1] = val
+	return toSort
+
+
+def frequencyCounter(results, layer, minFrequency, tree, N):
+	toDelete = []
+	layerIdx = layer - 1
+	for i in range(0, len(results[layerIdx])):
+		subset = results[layerIdx][i][0]
+		support = tree.nbOccurences(subset, tree.root)
+		freq = float(support)/float(N)
+		results[layerIdx][i][1] = freq
+		if freq < minFrequency:
+			toDelete.append(i)
+	i = 0
+	while i < len(toDelete):
+		del results[layerIdx][toDelete[i]-i]
+		i+=1
+
+
+def makeCombination(itemL1, prevLayerSet, layerNum, layerN):
+	newSet = [prevLayerSet[i] for i in range(0, len(prevLayerSet))]
+	newSet.append(itemL1)
+	sortTransaction(newSet)
+	for i in range(0, len(newSet)-1):
+		if newSet[i] == newSet[i+1]:
+			return None
+	for i in range(0, len(layerN)):
+		if layerN[i][0] == newSet:
+			return None
+	return newSet
+
+
+def makeLayer(results, layer, minFrequency, N): #N is the total number of transactions
+	layer1 = results[0]
+	prevLayerIdx = layer - 2
+	layerN = []
+	for i in range(0, len(results[prevLayerIdx])):
+		PrevFrequency = float(results[prevLayerIdx][i][1])
+		if PrevFrequency >= minFrequency:
+			for u in range(0, len(layer1)):
+				candidate = makeCombination(layer1[u][0][0], results[prevLayerIdx][i][0], layer, layerN)
+				if candidate is not None:
+					layerN.append([candidate, 0])
+	results.append(layerN)
+	return
+
+
+def prune(results, minFreq):
+	arr= []
+	for i in range(len(results)):
+		for j in range(len(results[i])):
+			if float(results[i][j][1]) >= float(minFreq):
+				arr.append([results[i][j][0], float(results[i][j][1])])
+	return arr
+
+
+def toString(results, freq):
+	# [<item 1>, <item 2>, ... <item k>] (<frequency>)
+	outString = "["
+	for layer in range(0, len(results)):
+		for i in range(0, len(results[layer])):
+			outString += str(results[layer][i][0]) +", "
+	outString = outString[:-2]
+	outString += "]"
+	outString += " (" + str(freq) + ")"
+	print(outString)
+
+
+
 	
 
 
 
-pwd = os.getcwd()
-Dataset_Path = "Datasets"
-Dataset_Name = "chess.dat"
-Dataset_Path = os.path.join(pwd, Dataset_Path, Dataset_Name)
-# print(Dataset_Path)
-alternative_miner(Dataset_Path, 0.9)
-apriori(Dataset_Path, 0.9)
+# pwd = os.getcwd()
+# Dataset_Path = "Datasets"
+# Dataset_Name = "chess.dat"
+# Dataset_Path = os.path.join(pwd, Dataset_Path, Dataset_Name)
+# # print(Dataset_Path)
+# alternative_miner(Dataset_Path, 0.98)
+# apriori(Dataset_Path, 0.98)
 
 # lista = [1, [-1], [-1], 5, 4, 6]
 # length = len(lista)
