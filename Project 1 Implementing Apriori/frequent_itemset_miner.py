@@ -24,6 +24,7 @@ __authors__ = "<write here your group, first name(s) and last name(s)>"
 import os
 import copy
 
+
 class Trie:
 	class Node:
 		def __init__(self, char):
@@ -142,17 +143,26 @@ def alternative_miner(filepath, minFrequency):
     operation_list = [item for item in item_list]
     database = vertical_representation(item_list, database)
     # print('database: ', database)
+    results = []
     for item in item_list:
         candidate_list = [item]
-        depth_search(candidate_list, item, minFrequency, total_number, database)
+        depth_search(candidate_list, item, minFrequency, total_number, database, results)
+    printResults(results)
+
+def printResults(results):
+	outString = ""
+	for i in range(0, len(results)):
+		outString += str(results[i][0]) + " (" + str(results[i][1]) + ")\n"
+	print(outString[:-1])
 
 
-def depth_search(candidate_list, item, minFrequency,  total_number, database):
+def depth_search(candidate_list, item, minFrequency,  total_number, database, results):
     """Undergoes depth first search"""
     operation_database = copy.deepcopy(database)
     support, projected = projected_database(item, operation_database)
     if support >= minFrequency:
-        print('{} ({})'.format(candidate_list, support / total_number))
+        # print('{} ({})'.format(candidate_list, float(support) / float(total_number)))
+        results.append([candidate_list, float(support) / float(total_number)])
         # print('frequent item: ', candidate_list, 'fre: ', support / total_number)
         # print('projected: ', projected)
         # Create new item list
@@ -166,7 +176,7 @@ def depth_search(candidate_list, item, minFrequency,  total_number, database):
         for item in item_list:
             copy_candidate = copy.deepcopy(candidate_list)
             copy_candidate.append(item)
-            depth_search(copy_candidate, item, minFrequency, total_number, projected)
+            depth_search(copy_candidate, item, minFrequency, total_number, projected, results)
 
 
 def projected_database(item, database):
@@ -306,10 +316,9 @@ def toString(results, freq):
 	outString = "["
 	for layer in range(0, len(results)):
 		for i in range(0, len(results[layer])):
-			outString += str(results[layer][i][0]) +", "
+			outString += str(results[layer][i][0]) +" (" +str(results[layer][i][1]) + ")\n"
 	outString = outString[:-2]
 	outString += "]"
-	outString += " (" + str(freq) + ")"
 	print(outString)
 
 
@@ -322,9 +331,9 @@ def toString(results, freq):
 # Dataset_Path = "Datasets"
 # Dataset_Name = "chess.dat"
 # Dataset_Path = os.path.join(pwd, Dataset_Path, Dataset_Name)
-# # print(Dataset_Path)
-# alternative_miner(Dataset_Path, 0.98)
-# apriori(Dataset_Path, 0.98)
+# # # # # # print(Dataset_Path)
+# apriori(Dataset_Path, 0.985)
+# alternative_miner(Dataset_Path, 0.985)
 
 # lista = [1, [-1], [-1], 5, 4, 6]
 # length = len(lista)
