@@ -135,48 +135,69 @@ class Dataset:
 def alternative_miner(filepath, minFrequency):
     """Runs the alternative frequent itemset mining algorithm on the specified file with the given minimum frequency"""
     original_dataset = Dataset(filepath)
-    database = original_dataset.transactions
-    # print(database[0])
-    total_number = len(database)
+
+    # database = original_dataset.transactions
+    # print('mark')
+    total_number = original_dataset.trans_num()
     minFrequency = minFrequency * total_number
-    item_list = original_dataset.items
-    operation_list = [item for item in item_list]
-    database = vertical_representation(item_list, database)
+
+    item_list = [item + 1 for item in range(original_dataset.items_num())]
+
+    database = vertical_representation(item_list, original_dataset.transactions)
+
+    for index in range(len(database)):
+        if len(database[index]) < minFrequency:
+            database[index] = [-1]
+
+    # print('mark')
 
     for item in item_list:
         candidate_list = [item]
-        depth_search(operation_list, candidate_list, item, minFrequency, total_number, database)
+        # candidate_list = []
+        depth_search(item_list, candidate_list, item, minFrequency, total_number, database)
 
 
-def depth_search(item_list, candidate_list, candidate_item, minFrequency,  total_number, database):
+def depth_search(item_list, candidate_list, candidate_item, minFrequency, total_number, database):
     """Undergoes depth first search"""
     support = len(database[candidate_item - 1])
     # print(candidate_list)
     if support >= minFrequency:
-        operation_database = copy.copy(database)
+        # print('projected')
+        operation_database = database.copy()
+        # print('projected')
         # print("operation_database", operation_database)
-        projected = projected_database(candidate_item, operation_database)
-        # print("projected", projected)
-        # print(candidate_list)
+        projected = projected_database(candidate_item, operation_database, minFrequency)
+        # print("projected")
+        
+        # copy1 = copy.copy(candidate_list)
+        # copy1.append(candidate_item)
+        # print('{} ({})'.format(copy1, support / total_number))
         print('{} ({})'.format(candidate_list, support / total_number))
 
         for item in item_list[candidate_item :]:
-            copy_candidate = copy.copy(candidate_list)
+
+            copy_candidate = candidate_list.copy()
             copy_candidate.append(item)
+
             depth_search(item_list, copy_candidate, item, minFrequency, total_number, projected)
+            # depth_search(item_list, copy1, item, minFrequency, total_number, projected)
     else:
         return 0
 
 
-def projected_database(item, database):
+def projected_database(item, database, minFrequency):
     """Returns projected database"""
     removed_item = database[item - 1]
     # database.remove(removed_item)
     database[item - 1] = [-1]
     for i in range(len(database)):
         # print(database[i])
-        if database[i] != [-1]:
+        if database[i] == [-1]:
+            continue
+        else:
             database[i] = list_intersections(removed_item, database[i])
+            if len(database[i]) < minFrequency:
+                database[i] == [-1]
     return database
 
 
@@ -335,8 +356,9 @@ def toString(results, freq):
 
 
 # a = [1 for _ in range(1000)]
-# for _ in range(1000):
+# for _ in range(100000):
 #     # b = copy.copy(a)
+#     # b = a.copy()
 #     # b = a
 
 
