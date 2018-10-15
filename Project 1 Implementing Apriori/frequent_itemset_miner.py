@@ -150,22 +150,20 @@ def alternative_miner(filepath, minFrequency):
 
 def depth_search(item_list, candidate_list, candidate_item, minFrequency,  total_number, database):
     """Undergoes depth first search"""
-    operation_database = copy.deepcopy(database)
-    # print("operation_database", operation_database)
-
-    support, projected = projected_database(candidate_item, operation_database)
-    # print("projected", projected)
+    support = len(database[candidate_item - 1])
     # print(candidate_list)
     if support >= minFrequency:
+        operation_database = copy.copy(database)
+        # print("operation_database", operation_database)
+        projected = projected_database(candidate_item, operation_database)
+        # print("projected", projected)
+        # print(candidate_list)
         print('{} ({})'.format(candidate_list, support / total_number))
 
         for item in item_list[candidate_item :]:
-            if item == -1:
-                continue
-            else:
-                copy_candidate = copy.deepcopy(candidate_list)
-                copy_candidate.append(item)
-                depth_search(item_list, copy_candidate, item, minFrequency, total_number, projected)
+            copy_candidate = copy.copy(candidate_list)
+            copy_candidate.append(item)
+            depth_search(item_list, copy_candidate, item, minFrequency, total_number, projected)
     else:
         return 0
 
@@ -179,7 +177,7 @@ def projected_database(item, database):
         # print(database[i])
         if database[i] != [-1]:
             database[i] = list_intersections(removed_item, database[i])
-    return len(removed_item), database
+    return database
 
 
 def list_intersections(list1, list2):
@@ -332,8 +330,14 @@ def toString(results, freq):
 # frequency = 0.98
 # 
 # # apriori(Dataset_Path, frequency)
-# print('\n')
+# # print('\n')
 # alternative_miner(Dataset_Path, frequency)
+
+
+# a = [1 for _ in range(1000)]
+# for _ in range(1000):
+#     # b = copy.copy(a)
+#     # b = a
 
 
 
