@@ -23,6 +23,7 @@ __authors__ = "<write here your group, first name(s) and last name(s)>"
 
 import os
 import copy
+import time
 
 
 class Trie:
@@ -58,6 +59,7 @@ class Trie:
         self.insert(foundChild, rest)
 
     def nbOccurences(self, word, currentNode):
+        # counts the number of times a certain word is present in the trie
         count = 0
         for node in currentNode.childs:
             if len(word) > 1:
@@ -66,7 +68,7 @@ class Trie:
             else: #last char of word
                 if node.char == word[0]: 
                     count += node.nb
-            if node.char != word[0]:
+            if node.char < word[0]:
                 count += self.nbOccurences(word, node)
         return count
 
@@ -83,7 +85,7 @@ class Trie:
                 rest = word[1:]
         for child in currentNode.childs:
             if child.char == letter:
-                return self.isPresent(child, rest) #todo: make it tail-recursive (with boolean if found)
+                return self.isPresent(child, rest) 
         return False
 
     def countPrefix(self, currentNode, word): #nb of times the prefix is shared:
@@ -240,7 +242,7 @@ def apriori(filepath, minFrequency):
         datas.transactions[transNb] = sortTransaction(datas.transactions[transNb])
         tree.insert(tree.root, datas.transactions[transNb])
     results = []
-    layer1 = []
+    layer1 = [] #the first layer is done outside of the main loop
     for i in range(1, datas.items_num()+1):
             layer1.append([[i], 0])
     results.append(layer1)
@@ -248,8 +250,8 @@ def apriori(filepath, minFrequency):
     results[0] = prune(results, minFrequency)
     layer = 2
     while layer < (datas.items_num()+1):
-        makeLayer(results, layer, minFrequency, N) #does the conbinations in an array, and adds it to results
-        frequencyCounter(results, layer, minFrequency, tree, N)
+        makeLayer(results, layer, minFrequency, N) #does the combinations based on the previous layer, where only hte frequen itemsets are present
+        frequencyCounter(results, layer, minFrequency, tree, N) #adds the frequency, and removes infrequent ones
         layer += 1
     toString(results, minFrequency)
 
@@ -269,6 +271,7 @@ def sortTransaction(transaction):
 
 
 def frequencyCounter(results, layer, minFrequency, tree, N):
+    # applied on a layer, if the frequency is too small the candidate is removed
     toDelete = []
     layerIdx = layer - 1
     for i in range(0, len(results[layerIdx])):
@@ -285,6 +288,7 @@ def frequencyCounter(results, layer, minFrequency, tree, N):
 
 
 def makeCombination(itemL1, prevLayerSet, layerNum, layerN):
+    # returns a new candidate set
     newSet = [prevLayerSet[i] for i in range(0, len(prevLayerSet))]
     newSet.append(itemL1)
     sortTransaction(newSet)
@@ -298,6 +302,7 @@ def makeCombination(itemL1, prevLayerSet, layerNum, layerN):
 
 
 def makeLayer(results, layer, minFrequency, N): #N is the total number of transactions
+    # builds the next layer from the previous layer. only the frequent items are present in the previous layer
     layer1 = results[0]
     prevLayerIdx = layer - 2
     layerN = []
@@ -313,6 +318,7 @@ def makeLayer(results, layer, minFrequency, N): #N is the total number of transa
 
 
 def prune(results, minFreq):
+    # used for the first layer (size one), the other layers will prune the unfit candidates when their support is computed
     arr= []
     for i in range(len(results)):
         for j in range(len(results[i])):
@@ -322,16 +328,13 @@ def prune(results, minFreq):
 
 
 def toString(results, freq):
+    # prints the frequent itemsets in the request format:
     # [<item 1>, <item 2>, ... <item k>] (<frequency>)
-    outString = "["
     for layer in range(0, len(results)):
         for i in range(0, len(results[layer])):
-            outString += str(results[layer][i][0]) +" (" +str(results[layer][i][1]) + ")\n"
             print('{} ({})'.format(results[layer][i][0], results[layer][i][1]))
-    outString = outString[:-2]
-    outString += "]"
-    # print(outString)
-    # print(type(outString))
+
+
 
 
 
@@ -341,15 +344,32 @@ def toString(results, freq):
 
 # pwd = os.getcwd()
 # Dataset_Path = "Datasets"
-# 
-# Dataset_Name = "chess.dat"
-# # Dataset_Name = "toy.dat"
-# 
+
+# # Dataset_Name = "chess.dat"
+# Dataset_Name = "retail2.dat"
+
 # Dataset_Path = os.path.join(pwd, Dataset_Path, Dataset_Name)
 # # # # # print(Dataset_Path)
-# 
+
 # frequency = 0.98
-# 
+
+# tic = time.clock()
+# apriori(Dataset_Path, frequency)
+# toc = time.clock()
+# aprioriTime = toc - tic
+# print('\n')
+
+# # chess : 1.77sec 0.145sec
+# # shrooms : 2.43 0.09
+# # retail : 
+
+
+# tic = time.clock()
+# alternative_miner(Dataset_Path, frequency)
+# toc = time.clock()
+# dfsTime = toc - tic
+# print(aprioriTime)
+# print(dfsTime)
 # # apriori(Dataset_Path, frequency)
 # # print('\n')
 # alternative_miner(Dataset_Path, frequency)
