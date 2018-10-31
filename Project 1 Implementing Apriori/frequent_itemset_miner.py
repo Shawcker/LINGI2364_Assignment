@@ -139,7 +139,6 @@ def alternative_miner(filepath, minFrequency):
     original_dataset = Dataset(filepath)
 
     # database = original_dataset.transactions
-    # print('mark')
     total_number = original_dataset.trans_num()
     minFrequency = minFrequency * total_number
 
@@ -151,7 +150,6 @@ def alternative_miner(filepath, minFrequency):
         if len(database[index]) < minFrequency:
             database[index] = [-1]
 
-    # print('mark')
 
     for item in item_list:
         candidate_list = [item]
@@ -162,18 +160,9 @@ def alternative_miner(filepath, minFrequency):
 def depth_search(item_list, candidate_list, candidate_item, minFrequency, total_number, database):
     """Undergoes depth first search"""
     support = len(database[candidate_item - 1])
-    # print(candidate_list)
     if support >= minFrequency:
-        # print('projected')
         operation_database = database.copy()
-        # print('projected')
-        # print("operation_database", operation_database)
         projected = projected_database(candidate_item, operation_database, minFrequency)
-        # print("projected")
-        
-        # copy1 = copy.copy(candidate_list)
-        # copy1.append(candidate_item)
-        # print('{} ({})'.format(copy1, support / total_number))
         print('{} ({})'.format(candidate_list, support / total_number))
 
         for item in item_list[candidate_item :]:
@@ -182,7 +171,6 @@ def depth_search(item_list, candidate_list, candidate_item, minFrequency, total_
             copy_candidate.append(item)
 
             depth_search(item_list, copy_candidate, item, minFrequency, total_number, projected)
-            # depth_search(item_list, copy1, item, minFrequency, total_number, projected)
     else:
         return 0
 
@@ -193,7 +181,6 @@ def projected_database(item, database, minFrequency):
     # database.remove(removed_item)
     database[item - 1] = [-1]
     for i in range(len(database)):
-        # print(database[i])
         if database[i] == [-1]:
             continue
         else:
@@ -333,6 +320,7 @@ def toString(results, freq):
     for layer in range(0, len(results)):
         for i in range(0, len(results[layer])):
             print('{} ({})'.format(results[layer][i][0], results[layer][i][1]))
+            pass
 
 
 
@@ -344,42 +332,33 @@ def toString(results, freq):
 
 # pwd = os.getcwd()
 # Dataset_Path = "Datasets"
-
-# # Dataset_Name = "chess.dat"
-# Dataset_Name = "retail2.dat"
-
-# Dataset_Path = os.path.join(pwd, Dataset_Path, Dataset_Name)
-# # # # # print(Dataset_Path)
-
-# frequency = 0.98
-
-# tic = time.clock()
-# apriori(Dataset_Path, frequency)
-# toc = time.clock()
-# aprioriTime = toc - tic
-# print('\n')
-
-# # chess : 1.77sec 0.145sec
-# # shrooms : 2.43 0.09
-# # retail : 
-
-
-# tic = time.clock()
-# alternative_miner(Dataset_Path, frequency)
-# toc = time.clock()
-# dfsTime = toc - tic
-# print(aprioriTime)
-# print(dfsTime)
-# # apriori(Dataset_Path, frequency)
-# # print('\n')
-# alternative_miner(Dataset_Path, frequency)
-
-
-# a = [1 for _ in range(1000)]
-# for _ in range(100000):
-#     # b = copy.copy(a)
-#     # b = a.copy()
-#     # b = a
+# 
+# Dataset_Names = ["chess.dat"]# , , ]
+# # Dataset_Name = "retail2.dat"
+# # 'connect.dat', 'pumsb.dat', 'pumsb_star.dat'  , , 'retail.dat',  'accidents.dat' 'toy.dat', 'mushroom.dat',
+# 
+# frequencies = [0.95, 0.9, 0.85, 0.8]
+# 
+# for frequency in frequencies:
+# 	# print(frequency)
+# 	for Dataset_Name in Dataset_Names:
+# 		New_Dataset_Path = os.path.join(pwd, Dataset_Path, Dataset_Name)
+# 		# print(Dataset_Path)
+# 
+# 		# tic = time.clock()
+# 		# apriori(New_Dataset_Path, frequency)
+# 		# toc = time.clock()
+# 		# aprioriTime = toc - tic
+# 
+# 		tic = time.clock()
+# 		alternative_miner(New_Dataset_Path, frequency)
+# 		toc = time.clock()
+# 		dfsTime = toc - tic
+# 
+# 		print('frequency', frequency, '; database', Dataset_Name)
+# 		# print('apriori', aprioriTime)
+# 		print('depth_search', dfsTime)
+# 		print('\n')
 
 
 

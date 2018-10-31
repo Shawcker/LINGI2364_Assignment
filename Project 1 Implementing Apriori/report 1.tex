@@ -1,0 +1,157 @@
+\documentclass[12pt, a4paper]{report}
+
+\usepackage{graphicx}
+\usepackage[super]{nth}
+\usepackage{color} % Colour control
+\definecolor{db}{cmyk}{1,0.5,0,0.5}
+\usepackage[Glenn]{fncychap}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+
+\renewcommand{\algorithmicrequire}{ \textbf{Input:}} %Use Input in the format of Algorithm
+\renewcommand{\algorithmicensure}{ \textbf{Output:}} 
+
+
+\setlength{\parindent}{0pt}
+
+\title{
+	\vspace{0.5cm} \textcolor{db}{\textsc{LINGI2364: Mining Patterns in Data}} \\
+	\vspace{0.5 cm} \rule{10 cm}{0.5pt} \\
+	\vspace{0.5 cm} \Large{Implementing Apriori} \\
+	\vspace{5 cm}
+	\begin{flushright}
+		\large
+		Jiayue \textsc{Xue} -- NOMA: 04231800 \\
+		Pierre \textsc{Lambert} -- NOMA: \\     
+	\end{flushright}
+	\vspace{0.5 cm}
+	\begin{flushright}
+		\normalsize \nth{21} October 2018 \\
+	\end{flushright}
+}
+\author{}
+\date{}
+
+
+\begin{document}
+
+\begin{figure}[t]
+	\hspace{10 cm} \includegraphics[scale=0.5]{epl-logo.jpg}
+\end{figure}
+
+\maketitle
+
+\tableofcontents
+
+
+\chapter{Implementation Description}
+
+\section{Aprorio}
+
+\subsection{Overview}
+
+\subsection{Optimization}
+
+
+\section{ECLAT}
+
+\subsection{Overview}
+In section, we first provide the overview of our implemented ECLAT search algorithm. 
+
+One of the primary differences between ECLAT and traditional searching algorithms is that ECLAT stores the database in a vertical representation which has one promising property: the support of every item in the database is naturally recorded and can be immediately derived by simple calculation.
+Our ECLAT search algorithm is characterized in Algorithm \ref{Alg:1}
+
+\begin{algorithm}
+	\caption{ECLAT}
+	\label{Alg:1}
+	\begin{algorithmic}
+		\Require $Itemset~I, Dataset~D, minFrequency~\theta$
+		\Ensure $Frequent~Itemsets$
+		\State
+		\State $D_o \gets Dataset$
+		\State $D_v \gets Vertical~Representation(D_o)$
+		\State \Call{DepthFirst~Search}{$\emptyset, D_v, \theta$}
+		\State
+		\Function {DepthFirst~Search}{$I, D, \theta$}
+			\If {$support_D(I) \geq \theta$}
+				\State OUTPUT $I$
+				\State Calculate $D_{I}$ from $D$
+				\For {all items $i$ in $I$}
+					\State \Call {DepthFirst~Search}{$I \cup i, D, \theta$}
+
+				\EndFor
+			\EndIf
+		\EndFunction
+	   
+
+
+	\end{algorithmic}
+\end{algorithm}
+
+
+
+\subsection{Optimization}
+In this section, we lay more emphasis on explaining our implementation choices.
+
+In the standard depth-first search algorithm, the projected dataset is firstly derived. After that, the support of the itemset is calculated and utilized for futher judgment. Note that the calculation of the projected dataset can be time-consuming, especially when the dataset becomes colossal. Futhermore, calculating the projected dataset for unfrequent item is futile and makes the whole searching process prolix. Compared to the standard depth-first search algorithm, we do not directly calculate the projected dataset given the itemset $I$. Instead, we first calculate the support of $I$ in the original dataset. This improvement is based one on paramount ovservation: the supports of one particular itemset in the original dataset and the projected dataset remain the same.
+
+After deriving the projected dataset from the original version, we traverse the remaining dataset and manually delete all the unfrequent items. Again, any operation on unfrequent itemset is useless. In that, avoid spending time on them can significantly improve the search efficiency, which is demonstrated by our experiment.
+
+Our delecting choice deserves to be mentioned. We do not directly delete one item from the item list. If doing so, the size of the item list will be reduced, which makes the indexing process become more arduous. To avoid the problem, we assign the value of the item to be "None". When scaling the "None" item, our algorithm will automatically skip it and continue to scale.
+
+\chapter{Performance Analysis}
+
+\section{Overview}
+In this section,  we carry out a series of experiments to test the actual performances of our two different algorithms. Note that we have set a time limit to $60$ seconds.
+
+\section{Results}
+
+\begin{table}[h]
+\centering
+\caption{Apriori}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+\diagbox{Dataset}{Time}{Frequecy} & 0.99 & 0.97 & 0.95 & 0.9 & 0.85 & 0.8 \\
+\hline
+toy & 0.0025 & 0.0015 & 0.0012 & 0.0016 & 0.0021 & 0.0015 \\
+\hline
+mushroom & 5.193 & 5.888 & 5.227 & 5.760 & 5.910 & 6.516 \\
+\hline
+chess & 4.34 & 5.671 & 19.466 & * & * & * \\
+\hline
+retail & * & * & * & * & * & * \\
+\hline
+accidents & * & * & * & * & * & * \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Depth-first}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+\diagbox{Dataset}{Time}{Frequecy} & 0.95 & 0.9 & 0.85 & 0.8 & 0.75 & 0.7\\
+\hline
+toy & 0.0009 & 0.0010 & 0.0009 & 0.0014 & 0.0009 & 0.009 \\
+\hline
+mushroom & 0.350 & 0.437 & 0.496 & 0.705 & 0.811 & 1.088 \\
+\hline
+chess & 1.500 & 15.712 & * & * & * & * \\
+\hline
+retail & 2.679 & 2.263 & 2.666 & 2.363 & 2.421 & 2.313 \\
+\hline
+accidents & 33.98 & 50.292 & * & * & * & * \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Assessment}
+As is shown in the tables, the performances of the two algorithms vary a lot. When the dataset becomes extremely large, the Apriori search alogorithm still cannot find out all the frequent itemsets within the available time even given a very high frequency.
+
+In addition, the properties of the dataset itself may have a telling impact on the performance of the search algorithm. In Table 1, Apriori runs faster in the chess dataset than it runs in the retail dataset. However, the testing performance of retail dataset is better than the chess dataset.
+
+
+
+\end{document}
