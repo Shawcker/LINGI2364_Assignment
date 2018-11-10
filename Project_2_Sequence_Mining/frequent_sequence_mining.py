@@ -2,6 +2,7 @@ import os
 import pickle
 import copy
 import time 
+import sys
 
 class Dataset:
     """Utility class to manage a dataset stored in a external file."""
@@ -175,44 +176,71 @@ def PrefixSpan(filepath1, filepath2, k):
     data1 = Dataset(filepath1)
     items1 = data1.items
     transactions1 = data1.transactions
-
     data2 = Dataset(filepath2)
     items2 = data2.items
     transactions2 = data2.transactions
     ### Combine datasets ###
     items = list(items1 | items2)
     transactions = transactions1 + transactions2
-
+    ### Preprocess dataset ###
     for i in range(len(transactions)):
         for j in range(len(transactions[i])):
             transactions[i][j] = transactions[i][j].split(' ')[0]
     new_transactions = Index_Transaction(items, transactions)
-
+    ### Initialize Root ###
     cursor = [-1 for _ in range(len(transactions))]
     Root = Node('root', cursor)
-    MinFrequency = 0.9
+    MinFrequency = 0.7
     MinSupport = MinFrequency * len(transactions)
-    # print(new_transactions[0])
     valid_list = []
     for item in items:
         Depth_First(item, items, new_transactions, Root, MinSupport, valid_list)
-    # result_length = len(valid_list)
-
-    number = Get_Support(valid_list)
+    
+    ### Check current supports ###
+    all_sequence = All_Frequent_Sequence(valid_list)
+    all_support = Get_Support(all_sequence)
+    different_support = set(all_support)
+    number = len(different_support)
     while number < k:
-        MinSupport = MinSupport - (k - number)
-        for node in valid_list:
-            for item in items:
-                Depth_First(item, items, new_transactions, node, MinSupport, valid_list)
-        number = Get_Support(valid_list)
+        if number == 0:
+            MinFrequency -= 0.15
+            MinSupport = MinFrequency * len(transactions)
+        else:
+            MinSupport = MinSupport - (k - number)
+        valid_list = []
+        for item in items:
+            Depth_First(item, items, new_transactions, Root, MinSupport, valid_list)
+        all_sequence = All_Frequent_Sequence(valid_list)
+        all_support = Get_Support(all_sequence)
+        different_support = set(all_support)
+        number = len(different_support)
+        # raise RuntimeError(number, k, MinSupport)
+    ### Output All Frequent Sequence ###
+    all_sequence = All_Frequent_Sequence(valid_list)
+    all_support = Get_Support(all_sequence)
+    for element in all_sequence:
+        for index in range(len(element)):
+            element[index] = element[index][0]
+    for index in range(len(all_sequence)):
+        current_sequence = all_sequence[index]
+        trans1_support = Cal_Support(current_sequence, transactions1)
+        trans2_support = all_support[index] - trans1_support
+        output = ''
+        for element in current_sequence:
+            output = output + element + ', '
+        output = output[: -2]
+        print('[{}]'.format(output), trans1_support, trans2_support, all_support[index])
 
-    for element in valid_list:
+
+def All_Frequent_Sequence(node_list):
+    all_sequence = []
+    for element in node_list:
         result = []
         for node in element.get_all():
             result.append(node.item)
-        print(result)
-
-    
+        result.remove(result[0])
+        all_sequence.append(result)
+    return all_sequence
 
 
 def Depth_First(item, items, dataset, parent, MinSupport, valid_list):
@@ -245,7 +273,7 @@ def Depth_First(item, items, dataset, parent, MinSupport, valid_list):
         if element != 10000:
             number += 1
     if number >= MinSupport:
-        new_node = Node(item, current_cursor, parent)
+        new_node = Node([item, number], current_cursor, parent)
         valid_list.append(new_node)
 
         # mylist = []
@@ -258,49 +286,40 @@ def Depth_First(item, items, dataset, parent, MinSupport, valid_list):
             Depth_First(item, items, dataset, new_node, MinSupport, valid_list)
 
 
-def Get_Support(node_list):
-    overall_length = set()
-    for element in node_list:
-        result = element.get_all()
-        overall_length.add(len(result))
-    overall_length = list(overall_length)
-    return len(overall_length)
+def Get_Support(sequence_list):
+    support_list = [sequence[-1][1] for sequence in sequence_list]
+    return support_list
 
 
-pwd = os.getcwd()
-Dataset_Path = "Datasets"
-Subpath = "Test"
-Dataset_Name1 = "positive.txt"
-Dataset_Name2 = "negative.txt"
-Final_Path1 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name1)
-Final_Path2 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name2)
-
-# SPADE(Final_Path, items, new)
-PrefixSpan(Final_Path1, Final_Path2, 5)
-
-
-
-my_trans = [
-    [
-        [1,1], [1,3], [2,1], [3,2], [3,3], [4,4]
-    ],
-    [
-        [1,2], [2,3], [2,4], [3,1], [4,2], [4,3]
-    ],
-    [
-        [1,4], [2,2], [3,4], [4,1]
-    ]
-]
-
-items = ['A', 'B', 'C']
-test_trans = [
-    ['A', 'B', 'A', 'C'], ['B', 'C'], ['C', 'A']
-]
-# print(Index_Transaction(items, test_trans))
+def Cal_Support(itemsets, transactions):
+    count = 0
+    for transaction in transactions:
+        item_cursor = 0
+        for element in transaction:
+            if element == itemsets[item_cursor]:
+                item_cursor += 1
+                if item_cursor == len(itemsets):
+                    count += 1
+                    break
+    return count
 
 
-a = Node('a', 'a')
-b = Node('b', 'b', a)
-c = Node('c', 'c', b)
-d = Node('c', 'c', c)
+def main():
+    pos_filepath = sys.argv[1] # filepath to positive class file
+    neg_filepath = sys.argv[2] # filepath to negative class file
+    k = int(sys.argv[3])
+    PrefixSpan(pos_filepath, neg_filepath, k)
 
+    # pwd = os.getcwd()
+    # Dataset_Path = "Datasets"
+    # Subpath = "Test"
+    # Dataset_Name1 = "positive.txt"
+    # Dataset_Name2 = "negative.txt"
+    # Final_Path1 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name1)
+    # Final_Path2 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name2)
+    # PrefixSpan(Final_Path1, Final_Path2, 6)
+    
+
+
+if __name__ == "__main__":
+    main()
