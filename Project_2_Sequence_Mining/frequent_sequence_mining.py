@@ -1,6 +1,7 @@
 import os
 import pickle
 import copy
+import time 
 
 class Dataset:
     """Utility class to manage a dataset stored in a external file."""
@@ -61,6 +62,17 @@ class Node:
 
     def get_children(self):
         return [child for child in self.children]
+
+    def get_all(self):
+        parents = [self]
+        node = self
+        while node.parent:
+            parents.append(node.parent)
+            node = node.parent
+        new_parents = []
+        for index in range(len(parents)):
+            new_parents.append(parents[-index - 1])
+        return new_parents
 
 
 ### SPADE ###
@@ -139,30 +151,132 @@ def SPADE(filepath, items, dataset):
 
 
 ### PrefixSpan ###
+def Index_Transaction(items, transactions):
+    """For each symbol in each transaction, maintain a list of its positions"""
+    index_version = []
+    for i in range(len(transactions)):
+        new_index = []
+        exist_item = []
+        for j in range(len(transactions[i])):
+            element = transactions[i][j]
+            if element not in exist_item:
+                exist_item.append(element)
+                new_index.append([element, [j]])
+            else:
+                element_index = exist_item.index(element)
+                new_index[element_index][1].append(j)
+        index_version.append(new_index)
+    return index_version
 
+
+def PrefixSpan(filepath1, filepath2, k):
+    """Initialize PrefixSpan Search"""
+    ### Read files ###
+    data1 = Dataset(filepath1)
+    items1 = data1.items
+    transactions1 = data1.transactions
+
+    data2 = Dataset(filepath2)
+    items2 = data2.items
+    transactions2 = data2.transactions
+    ### Combine datasets ###
+    items = list(items1 | items2)
+    transactions = transactions1 + transactions2
+
+    for i in range(len(transactions)):
+        for j in range(len(transactions[i])):
+            transactions[i][j] = transactions[i][j].split(' ')[0]
+    new_transactions = Index_Transaction(items, transactions)
+
+    cursor = [-1 for _ in range(len(transactions))]
+    Root = Node('root', cursor)
+    MinFrequency = 0.9
+    MinSupport = MinFrequency * len(transactions)
+    # print(new_transactions[0])
+    valid_list = []
+    for item in items:
+        Depth_First(item, items, new_transactions, Root, MinSupport, valid_list)
+    # result_length = len(valid_list)
+
+    number = Get_Support(valid_list)
+    while number < k:
+        MinSupport = MinSupport - (k - number)
+        for node in valid_list:
+            for item in items:
+                Depth_First(item, items, new_transactions, node, MinSupport, valid_list)
+        number = Get_Support(valid_list)
+
+    for element in valid_list:
+        result = []
+        for node in element.get_all():
+            result.append(node.item)
+        print(result)
+
+    
+
+
+def Depth_First(item, items, dataset, parent, MinSupport, valid_list):
+    """Given an item, find the position"""
+    current_cursor = [-1 for _ in range(len(dataset))]
+    parent_cursor = parent.dataset
+    # print('item', item)
+    # print('parent', parent_cursor)
+    for index in range(len(dataset)):
+        current_transaction = dataset[index]
+        # print('trans', current_transaction)
+        start_index = parent_cursor[index] + 1
+        transaction_items = []
+        for element in current_transaction:
+            transaction_items.append(element[0])
+        if item not in transaction_items:
+            current_cursor[index] = 10000
+        else:
+            candidates = current_transaction[transaction_items.index(item)][1]
+            if candidates[-1] < start_index:
+                current_cursor[index] = 10000
+            else:
+                for order in candidates:
+                    if order >= start_index:
+                        current_cursor[index] = order
+                        break
+    # print('current', current_cursor)
+    number = 0
+    for element in current_cursor:
+        if element != 10000:
+            number += 1
+    if number >= MinSupport:
+        new_node = Node(item, current_cursor, parent)
+        valid_list.append(new_node)
+
+        # mylist = []
+        # result = new_node.get_all()
+        # for element in result:
+        #     mylist.append(element.item)
+        # print(mylist)
+
+        for item in items:
+            Depth_First(item, items, dataset, new_node, MinSupport, valid_list)
+
+
+def Get_Support(node_list):
+    overall_length = set()
+    for element in node_list:
+        result = element.get_all()
+        overall_length.add(len(result))
+    overall_length = list(overall_length)
+    return len(overall_length)
 
 
 pwd = os.getcwd()
 Dataset_Path = "Datasets"
-Subpath = "Reuters"
-Dataset_Name = "acq.txt"
-Final_Path = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name)
-# data = Dataset(Final_Path)
-# items = data.items
-# items = list(items)
-# transactions = data.transactions
+Subpath = "Test"
+Dataset_Name1 = "positive.txt"
+Dataset_Name2 = "negative.txt"
+Final_Path1 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name1)
+Final_Path2 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name2)
 
-
-# with open('transactions.pkl', 'wb') as f:
-#     pickle.dump(transactions, f)
-with open('item.pkl', 'rb') as f:
-    items = pickle.load(f)
-with open('transactions.pkl', 'rb') as f:
-    transactions = pickle.load(f)
-
-# with open('data.pkl', 'rb') as f:
-#     new = pickle.load(f)
 # SPADE(Final_Path, items, new)
+PrefixSpan(Final_Path1, Final_Path2, 5)
 
 
 
@@ -177,10 +291,16 @@ my_trans = [
         [1,4], [2,2], [3,4], [4,1]
     ]
 ]
-# a = Projeted(1, my_trans, 1)
-# print(a)
+
+items = ['A', 'B', 'C']
+test_trans = [
+    ['A', 'B', 'A', 'C'], ['B', 'C'], ['C', 'A']
+]
+# print(Index_Transaction(items, test_trans))
+
 
 a = Node('a', 'a')
 b = Node('b', 'b', a)
 c = Node('c', 'c', b)
-# print(c.depth)
+d = Node('c', 'c', c)
+
