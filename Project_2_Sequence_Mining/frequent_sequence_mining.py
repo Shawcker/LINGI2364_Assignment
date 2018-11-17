@@ -173,6 +173,7 @@ def Index_Transaction(items, transactions):
 def PrefixSpan(filepath1, filepath2, k):
     """Initialize PrefixSpan Search"""
     ### Read files ###
+    tic = time.time()
     data1 = Dataset(filepath1)
     items1 = data1.items
     transactions1 = data1.transactions
@@ -193,6 +194,7 @@ def PrefixSpan(filepath1, filepath2, k):
     MinFrequency = 0.7
     MinSupport = MinFrequency * len(transactions)
     valid_list = []
+    tic = time.time()
     for item in items:
         Depth_First(item, items, new_transactions, Root, MinSupport, valid_list)
     ### Check current supports ###
@@ -201,14 +203,39 @@ def PrefixSpan(filepath1, filepath2, k):
     different_support = set(all_support)
     number = len(different_support)
     while number < k:
+        origin = MinSupport
         if number == 0:
             MinFrequency -= 0.15
             MinSupport = MinFrequency * len(transactions)
         else:
             MinSupport = MinSupport - (k - number)
-        valid_list = []
-        for item in items:
-            Depth_First(item, items, new_transactions, Root, MinSupport, valid_list)
+
+        new_list = []
+        Find_Unsearched(origin, MinSupport, Root, new_list, valid_list)
+        for node in new_list:
+            for item in items:
+                Depth_First(item, items, new_transactions, node, MinSupport, valid_list)
+
+        # total_list = []
+        # ### Read Root Node ###
+        # node = Root
+        # candidate_list = copy.copy(items)
+        # children_list = [child.item for child in node.children]
+        # for item in children_list:
+        #     candidate_list.remove(item[0])
+        # total_list.append([node, candidate_list])
+        # ### Read All Valid Nodes ###
+        # for node in valid_list:
+        #     candidate_list = copy.copy(items)
+        #     children_list = [child.item for child in node.children]
+        #     for item in children_list:
+        #         candidate_list.remove(item[0])
+        #     total_list.append([node, candidate_list])
+        # for pair in total_list:
+        #     for item in pair[1]:
+        #         Depth_First(item, items, new_transactions, pair[0], MinSupport, valid_list)
+        
+        ### Check current supports ###
         all_sequence = All_Frequent_Sequence(valid_list)
         all_support = Get_Support(all_sequence)
         different_support = set(all_support)
@@ -228,6 +255,19 @@ def PrefixSpan(filepath1, filepath2, k):
             output = output + element + ', '
         output = output[: -2]
         print('[{}]'.format(output), trans1_support, trans2_support, all_support[index])
+    print(time.time() - tic)
+
+
+def Find_Unsearched(origin, MinSupport, node, new_list, valid_list):
+    children_list = [child for child in node.children]
+    for child in children_list:
+        if child.item[1] >= MinSupport:
+            if child.item[1] < origin:
+                valid_list.append(child)
+                new_list.append(child)
+            Find_Unsearched(origin, MinSupport, child, new_list, valid_list)
+
+    
 
 
 def All_Frequent_Sequence(node_list):
@@ -243,33 +283,34 @@ def All_Frequent_Sequence(node_list):
 
 def Depth_First(item, items, dataset, parent, MinSupport, valid_list):
     """Given an item, find the position"""
-    current_cursor = copy.copy(parent.dataset)
+    current_cursor = copy.deepcopy(parent.dataset)
     parent_cursor = parent.dataset
     number = 0
     for index in range(len(dataset)):
-        if parent_cursor[index] == 10000:
-            continue
-        else:
+        flag = 0
+        if parent_cursor[index] != 10000:
             current_transaction = dataset[index]
             start_index = parent_cursor[index] + 1
             transaction_items = []
             for element in current_transaction:
-                transaction_items.append(element[0])
-            if item not in transaction_items:
+                if item == element[0]:
+                    flag = 1
+                    candidates = element[1]
+                    if candidates[-1] < start_index:
+                        current_cursor[index] = 10000
+                    else:
+                        for order in candidates:
+                            if order >= start_index:
+                                current_cursor[index] = order
+                                number += 1
+                                break
+                    break
+            if flag == 0:
                 current_cursor[index] = 10000
-            else:
-                candidates = current_transaction[transaction_items.index(item)][1]
-                if candidates[-1] < start_index:
-                    current_cursor[index] = 10000
-                else:
-                    for order in candidates:
-                        if order >= start_index:
-                            current_cursor[index] = order
-                            number += 1
-                            break
-    
+            
+    new_node = Node([item, number], current_cursor, parent)
     if number >= MinSupport:
-        new_node = Node([item, number], current_cursor, parent)
+        # new_node = Node([item, number], current_cursor, parent)
         valid_list.append(new_node)
         for item in items:
             Depth_First(item, items, dataset, new_node, MinSupport, valid_list)
@@ -294,7 +335,7 @@ def Cal_Support(itemsets, transactions):
 
 
 def main():
-    a = 1
+    a = 2
 
     if a == 1:
         pos_filepath = sys.argv[1] # filepath to positive class file
@@ -304,9 +345,12 @@ def main():
     else:
         pwd = os.getcwd()
         Dataset_Path = "Datasets"
+        # Subpath = "Reuters"
+        # Dataset_Name1 = "acq.txt"
+        # Dataset_Name2 = "earn.txt"
         Subpath = "Test"
-        Dataset_Name1 = "positive.txt"
-        Dataset_Name2 = "negative.txt"
+        Dataset_Name1 = "positive1.txt"
+        Dataset_Name2 = "negative1.txt"
         Final_Path1 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name1)
         Final_Path2 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name2)
         PrefixSpan(Final_Path1, Final_Path2, 6)
