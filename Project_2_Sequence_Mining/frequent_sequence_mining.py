@@ -195,7 +195,6 @@ def PrefixSpan(filepath1, filepath2, k):
     valid_list = []
     for item in items:
         Depth_First(item, items, new_transactions, Root, MinSupport, valid_list)
-    
     ### Check current supports ###
     all_sequence = All_Frequent_Sequence(valid_list)
     all_support = Get_Support(all_sequence)
@@ -214,7 +213,6 @@ def PrefixSpan(filepath1, filepath2, k):
         all_support = Get_Support(all_sequence)
         different_support = set(all_support)
         number = len(different_support)
-        # raise RuntimeError(number, k, MinSupport)
     ### Output All Frequent Sequence ###
     all_sequence = All_Frequent_Sequence(valid_list)
     all_support = Get_Support(all_sequence)
@@ -245,43 +243,34 @@ def All_Frequent_Sequence(node_list):
 
 def Depth_First(item, items, dataset, parent, MinSupport, valid_list):
     """Given an item, find the position"""
-    current_cursor = [-1 for _ in range(len(dataset))]
+    current_cursor = copy.copy(parent.dataset)
     parent_cursor = parent.dataset
-    # print('item', item)
-    # print('parent', parent_cursor)
+    number = 0
     for index in range(len(dataset)):
-        current_transaction = dataset[index]
-        # print('trans', current_transaction)
-        start_index = parent_cursor[index] + 1
-        transaction_items = []
-        for element in current_transaction:
-            transaction_items.append(element[0])
-        if item not in transaction_items:
-            current_cursor[index] = 10000
+        if parent_cursor[index] == 10000:
+            continue
         else:
-            candidates = current_transaction[transaction_items.index(item)][1]
-            if candidates[-1] < start_index:
+            current_transaction = dataset[index]
+            start_index = parent_cursor[index] + 1
+            transaction_items = []
+            for element in current_transaction:
+                transaction_items.append(element[0])
+            if item not in transaction_items:
                 current_cursor[index] = 10000
             else:
-                for order in candidates:
-                    if order >= start_index:
-                        current_cursor[index] = order
-                        break
-    # print('current', current_cursor)
-    number = 0
-    for element in current_cursor:
-        if element != 10000:
-            number += 1
+                candidates = current_transaction[transaction_items.index(item)][1]
+                if candidates[-1] < start_index:
+                    current_cursor[index] = 10000
+                else:
+                    for order in candidates:
+                        if order >= start_index:
+                            current_cursor[index] = order
+                            number += 1
+                            break
+    
     if number >= MinSupport:
         new_node = Node([item, number], current_cursor, parent)
         valid_list.append(new_node)
-
-        # mylist = []
-        # result = new_node.get_all()
-        # for element in result:
-        #     mylist.append(element.item)
-        # print(mylist)
-
         for item in items:
             Depth_First(item, items, dataset, new_node, MinSupport, valid_list)
 
@@ -305,19 +294,22 @@ def Cal_Support(itemsets, transactions):
 
 
 def main():
-    pos_filepath = sys.argv[1] # filepath to positive class file
-    neg_filepath = sys.argv[2] # filepath to negative class file
-    k = int(sys.argv[3])
-    PrefixSpan(pos_filepath, neg_filepath, k)
+    a = 1
 
-    # pwd = os.getcwd()
-    # Dataset_Path = "Datasets"
-    # Subpath = "Test"
-    # Dataset_Name1 = "positive.txt"
-    # Dataset_Name2 = "negative.txt"
-    # Final_Path1 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name1)
-    # Final_Path2 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name2)
-    # PrefixSpan(Final_Path1, Final_Path2, 6)
+    if a == 1:
+        pos_filepath = sys.argv[1] # filepath to positive class file
+        neg_filepath = sys.argv[2] # filepath to negative class file
+        k = int(sys.argv[3])
+        PrefixSpan(pos_filepath, neg_filepath, k)
+    else:
+        pwd = os.getcwd()
+        Dataset_Path = "Datasets"
+        Subpath = "Test"
+        Dataset_Name1 = "positive.txt"
+        Dataset_Name2 = "negative.txt"
+        Final_Path1 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name1)
+        Final_Path2 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name2)
+        PrefixSpan(Final_Path1, Final_Path2, 6)
     
 
 
