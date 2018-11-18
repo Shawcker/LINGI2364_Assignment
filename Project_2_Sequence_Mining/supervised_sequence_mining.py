@@ -87,7 +87,6 @@ def Weighted_Relative_ccuracy(P, N, p, n):
 def supervised_sequence_mining(filepath1, filepath2, k):
     """ Initialize Supervised Sequence Mining """
     # Read files
-    tic = time.time()
     data1 = Dataset(filepath1)
     items1 = data1.items
     transactions1 = data1.transactions
@@ -192,14 +191,14 @@ def Depth_First(item, items, new_trans_list, parent, parameter, valid_list):
     else:
         min_score = min(score_list)
     lower_bound = P * min_score / coefficient
+    if support[0] < lower_bound:
+        return 0
     if len(valid_list) < k:
-        # key = support[0] * 1000 + support[1]
         try:
             valid_list[key].append(new_node)
         except:
             valid_list[key] = [new_node]
         # Start new search
-        time = 0
         for item in items:
             Depth_First(item, items, new_trans_list,
                         new_node, parameter, valid_list)
