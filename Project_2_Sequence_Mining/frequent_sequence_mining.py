@@ -1,8 +1,9 @@
 import os
 import pickle
 import copy
-import time 
+import time
 import sys
+
 
 class Dataset:
     """Utility class to manage a dataset stored in a external file."""
@@ -45,12 +46,12 @@ class Node:
         self.item = item
         self.dataset = dataset
         self.parent = parent
-        if self.parent == None:
+        if self.parent is None:
             self.depth = 1
         else:
             self.parent.add_children([self])
             self.depth = self.parent.depth + 1
-        if children == None:
+        if children is None:
             self.children = []
         else:
             self.children = [child for child in children]
@@ -76,7 +77,7 @@ class Node:
         return new_parents
 
 
-### SPADE ###
+# SPADE
 def depth_first(item, items, parent):
     item_index = items.index(item)
     item_support = Unique_Index(parent.dataset[item_index])
@@ -97,7 +98,8 @@ def Vertical_Representation(items, transactions):
     for t_index in range(len(transactions)):
         transaction = transactions[t_index]
         for i_index in range(len(transaction)):
-            v_items[items.index(transaction[i_index].split(' ')[0])].append([t_index + 1, i_index + 1])
+            v_items[items.index(transaction[i_index].split(' ')[0])] \
+                .append([t_index + 1, i_index + 1])
     return v_items
 
 
@@ -151,7 +153,7 @@ def SPADE(filepath, items, dataset):
     print('ok')
 
 
-### PrefixSpan ###
+# PrefixSpan
 def Index_Transaction(items, transactions):
     """For each symbol in each transaction, maintain a list of its positions"""
     index_version = []
@@ -171,8 +173,8 @@ def Index_Transaction(items, transactions):
 
 
 def PrefixSpan(filepath1, filepath2, k):
-    """Initialize PrefixSpan Search"""
-    ### Read files ###
+    """ Initialize PrefixSpan Search """
+    # Read files
     tic = time.time()
     data1 = Dataset(filepath1)
     items1 = data1.items
@@ -180,24 +182,26 @@ def PrefixSpan(filepath1, filepath2, k):
     data2 = Dataset(filepath2)
     items2 = data2.items
     transactions2 = data2.transactions
-    ### Combine datasets ###
+    # Combine datasets
     items = list(items1 | items2)
     transactions = transactions1 + transactions2
-    ### Preprocess dataset ###
+    # Preprocess dataset
     for i in range(len(transactions)):
         for j in range(len(transactions[i])):
             transactions[i][j] = transactions[i][j].split(' ')[0]
     new_transactions = Index_Transaction(items, transactions)
-    ### Initialize Root ###
+    # Initialize Root
     cursor = [-1 for _ in range(len(transactions))]
     Root = Node('root', cursor)
-    MinFrequency = 0.7
+    MinFrequency = 0.8
     MinSupport = MinFrequency * len(transactions)
+    # Start Search
     valid_list = []
     tic = time.time()
     for item in items:
-        Depth_First(item, items, new_transactions, Root, MinSupport, valid_list)
-    ### Check current supports ###
+        Depth_First(item, items, new_transactions,
+                    Root, MinSupport, valid_list)
+    # Check current supports
     all_sequence = All_Frequent_Sequence(valid_list)
     all_support = Get_Support(all_sequence)
     different_support = set(all_support)
@@ -209,38 +213,19 @@ def PrefixSpan(filepath1, filepath2, k):
             MinSupport = MinFrequency * len(transactions)
         else:
             MinSupport = MinSupport - (k - number)
-
+        # Get Candidate List #
         new_list = []
         Find_Unsearched(origin, MinSupport, Root, new_list, valid_list)
         for node in new_list:
             for item in items:
-                Depth_First(item, items, new_transactions, node, MinSupport, valid_list)
-
-        # total_list = []
-        # ### Read Root Node ###
-        # node = Root
-        # candidate_list = copy.copy(items)
-        # children_list = [child.item for child in node.children]
-        # for item in children_list:
-        #     candidate_list.remove(item[0])
-        # total_list.append([node, candidate_list])
-        # ### Read All Valid Nodes ###
-        # for node in valid_list:
-        #     candidate_list = copy.copy(items)
-        #     children_list = [child.item for child in node.children]
-        #     for item in children_list:
-        #         candidate_list.remove(item[0])
-        #     total_list.append([node, candidate_list])
-        # for pair in total_list:
-        #     for item in pair[1]:
-        #         Depth_First(item, items, new_transactions, pair[0], MinSupport, valid_list)
-        
-        ### Check current supports ###
+                Depth_First(item, items, new_transactions,
+                            node, MinSupport, valid_list)
+        # Check current supports #
         all_sequence = All_Frequent_Sequence(valid_list)
         all_support = Get_Support(all_sequence)
         different_support = set(all_support)
         number = len(different_support)
-    ### Output All Frequent Sequence ###
+    # Output All Frequent Sequence #
     all_sequence = All_Frequent_Sequence(valid_list)
     all_support = Get_Support(all_sequence)
     for element in all_sequence:
@@ -254,8 +239,9 @@ def PrefixSpan(filepath1, filepath2, k):
         for element in current_sequence:
             output = output + element + ', '
         output = output[: -2]
-        print('[{}]'.format(output), trans1_support, trans2_support, all_support[index])
-    print(time.time() - tic)
+        print('[{}]'.format(output), trans1_support,
+              trans2_support, all_support[index])
+    # print(time.time() - tic)
 
 
 def Find_Unsearched(origin, MinSupport, node, new_list, valid_list):
@@ -266,8 +252,6 @@ def Find_Unsearched(origin, MinSupport, node, new_list, valid_list):
                 valid_list.append(child)
                 new_list.append(child)
             Find_Unsearched(origin, MinSupport, child, new_list, valid_list)
-
-    
 
 
 def All_Frequent_Sequence(node_list):
@@ -286,12 +270,12 @@ def Depth_First(item, items, dataset, parent, MinSupport, valid_list):
     current_cursor = copy.deepcopy(parent.dataset)
     parent_cursor = parent.dataset
     number = 0
+    new_items = set()
     for index in range(len(dataset)):
         flag = 0
         if parent_cursor[index] != 10000:
             current_transaction = dataset[index]
             start_index = parent_cursor[index] + 1
-            transaction_items = []
             for element in current_transaction:
                 if item == element[0]:
                     flag = 1
@@ -303,17 +287,19 @@ def Depth_First(item, items, dataset, parent, MinSupport, valid_list):
                             if order >= start_index:
                                 current_cursor[index] = order
                                 number += 1
+                                for element in current_transaction:
+                                    new_items.add(element[0])
                                 break
                     break
             if flag == 0:
                 current_cursor[index] = 10000
-            
     new_node = Node([item, number], current_cursor, parent)
     if number >= MinSupport:
-        # new_node = Node([item, number], current_cursor, parent)
+        # Start further Search ##
         valid_list.append(new_node)
-        for item in items:
-            Depth_First(item, items, dataset, new_node, MinSupport, valid_list)
+        for item in new_items:
+            Depth_First(item, new_items, dataset,
+                        new_node, MinSupport, valid_list)
 
 
 def Get_Support(sequence_list):
@@ -338,8 +324,8 @@ def main():
     a = 2
 
     if a == 1:
-        pos_filepath = sys.argv[1] # filepath to positive class file
-        neg_filepath = sys.argv[2] # filepath to negative class file
+        pos_filepath = sys.argv[1]  # filepath to positive class file
+        neg_filepath = sys.argv[2]  # filepath to negative class file
         k = int(sys.argv[3])
         PrefixSpan(pos_filepath, neg_filepath, k)
     else:
@@ -349,12 +335,11 @@ def main():
         # Dataset_Name1 = "acq.txt"
         # Dataset_Name2 = "earn.txt"
         Subpath = "Test"
-        Dataset_Name1 = "positive1.txt"
-        Dataset_Name2 = "negative1.txt"
+        Dataset_Name1 = "positive.txt"
+        Dataset_Name2 = "negative.txt"
         Final_Path1 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name1)
         Final_Path2 = os.path.join(pwd, Dataset_Path, Subpath, Dataset_Name2)
         PrefixSpan(Final_Path1, Final_Path2, 6)
-    
 
 
 if __name__ == "__main__":
