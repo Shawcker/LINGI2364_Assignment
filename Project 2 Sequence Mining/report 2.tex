@@ -1,0 +1,116 @@
+\documentclass[12pt, a4paper]{report}
+
+\usepackage{graphicx}
+\usepackage[super]{nth}
+\usepackage{color} % Colour control
+\definecolor{db}{cmyk}{1,0.5,0,0.5}
+\usepackage[Glenn]{fncychap}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\usepackage{diagbox}
+\usepackage{enumerate}
+
+\renewcommand{\algorithmicrequire}{ \textbf{Input:}} %Use Input in the format of Algorithm
+\renewcommand{\algorithmicensure}{ \textbf{Output:}} 
+
+
+\setlength{\parindent}{0pt}
+
+\title{
+	\vspace{0.5cm} \textcolor{db}{\textsc{LINGI2364: Mining Patterns in Data}} \\
+	\vspace{0.5 cm} \rule{10 cm}{0.5pt} \\
+	\vspace{0.5 cm} \Large{Implementing Sequence Mining} \\
+	\vspace{5 cm}
+	\begin{flushright}
+		\large
+		Jiayue \textsc{Xue} -- NOMA: 04231800 \\
+		Pierre \textsc{Lambert} -- NOMA: 22661000\\     
+	\end{flushright}
+	\vspace{0.5 cm}
+	\begin{flushright}
+		\normalsize \nth{19} November 2018 \\
+	\end{flushright}
+}
+\author{}
+\date{}
+
+
+\begin{document}
+
+\begin{figure}[t]
+	\hspace{10 cm} \includegraphics[scale=0.5]{epl-logo.jpg}
+\end{figure}
+
+\maketitle
+
+\tableofcontents
+
+
+\chapter{Overview}
+In this assignment, our task can be divided into four parts. 
+
+Our first objective is to mine the $k$ most frequent patterns by a PrefixSpan algorithm. 
+
+After that, given a supervised dataset, we modify the frequent sequence mining algorithm to find out the $k$ best patterns according to the "Weighted Relative Accuracy" scoring function. 
+
+For the third part, we are required  to adapt our supervised sequence mining algorithm in order to return only closed patterns. 
+
+Finally, we use two alternative scoring functions: "Absolute Weighted Relative Accuracy" scoring function and "Information Gain" scoring function to implement closed supervised sequence mining algorithm. Thus, with three different versions of closed supervised sequence mining algorithms, we can also compare them.
+
+\chapter{Implementation Details}
+
+\section{Frequent Sequence Mining}
+PrefixSpan is one type of depth-first-search algorithm which efficiently finds out all the frequent sequences in the given transactions. Compared to ordinary task which finds out patterns according to a given minimum support threshold, this time we are required to output the top $k$ frequent sequences considering the summation of the supports in positive and negative datasets. 
+
+Regarding these requirements, we first combine two dataset into a bigger one so that the summation can be easily derived. Furthermore, in order to avoid searching on unnecessary nodes, we initialize the depth first search with a high minimum support threshold. If the output of the first iteration does not meet the top $k$ constraint, we carefully adjust the minimum support threshold and continue the depth first search based on existing nodes to find the remaining results. Note that, by continuing on the former search tree, it is much faster than starting from the root again. 
+
+\section{Supervised Sequence Mining with Wracc}
+In this section, we make full use of the first frequent sequence mining algorithm and make some paramount changes to implement the supervised sequence mining algorithm.
+
+First, we continue the search in the tree in three conditions:
+\begin{enumerate}
+    \item we do not have $k$ results yet
+    \item the score of the current node is equal or larger than the lowest score of the found patterns 
+    \item the score of the current node is smaller than the lowest score of the found patterns but its support in the positive dataset is larger than the lower bound
+\end{enumerate}
+
+Second, we have a special strategy to update the lower bound dynamically so that we can greatly prune the search tree. To be more concrete, lower bound is computed as following: 
+\begin{equation}
+    Bound-P = P * min-score / coefficient,
+\end{equation}
+where $P$ is the total number of the positive transactions, $N$ is the total number of the negative transactions, $min-score$ is the lowest score of the found patterns and $coefficient$ is the constant value in the scoring function: $(P/(P+N))*(N/(P+N))$.
+
+\section{Supervised Closed Sequence Mining with Wracc}
+Based on the supervised sequence mining algorithm, we add another constraint on the search algorithmm: the closed constraint. Our choice to deal with the closeness constraint is to check its requirements only when inserting
+a pattern in the set of $k$ best patterns by searching for and removing eventual sub-patterns with the same
+supports. Thanks to our appropriate data structure, we can realize this constraint easily. Since we store all the possible patterns in a dictionary and the patterns are stored in the same list if them have the same score. Although having the same score cannot necessarily conclude that the two patterns have the same support, this condition can provide useful information so that we can dramatically decrease the search space. To be more specified, if two patterns have the same support, they must have the same score no matter what kind of scoring function. In that, we can only search all the patterns having the same score to find out if any of them is not closed. Finally, all the patterns having the same score are stored together in our dictionary.
+
+\section{Supervised Sequence Mining with different scoring function}
+
+\subsection{Absolute Weighted Relative Accuracy}
+For this task, we just need to add another lower bound constraint: $Bound-N = N * min-score / coefficient$. Note that we stop the search process only if the support of current node is both smaller than the two lower bound constraints. For one node, if its support in positive dataset is larger than $Bound-P$ or its support in negative dataset is larger than $Bound-N$, it stil has a chance to be qualified.
+
+\subsection{Information Gain}
+For this task, we just need to adopt another method to define the lower bound constraint. In this case, $lower-bound-P = Information-Gain(P, N, p, 0)$ and $lower-bound-N = Information-Gain(P, N, 0, n)$.
+
+\section{Different Scoring Functions Analysis}
+When comparing the different scoring functions, we can find out that the numbers of resulting elements of the information gain scoring function and the absolute Wracc are often similar. In addition, the output of the absolute Wracc are included in the results from information gain scoring function. Finally, we can also observe that the program using the information gain scoring function is slower than the other two programs.
+
+\begin{table}[h]
+    \centering
+    \caption{k = 6}
+    \begin{tabular}{|c|c|c|c|}
+    \hline
+    \diagbox{Dataset}{Number of Output}{Scoring function} & Wracc & Abs Wracc & Info. Gain \\
+    \hline
+    test & 58 & 20 & 23 \\  
+    \hline
+    protein & 6 & 6 & 6\\    
+    \hline
+    reuters & timeout & timeout & timeout \\ 
+    \hline
+    \end{tabular}
+\end{table}
+
+\end{document}

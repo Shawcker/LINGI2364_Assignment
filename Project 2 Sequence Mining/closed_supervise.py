@@ -111,13 +111,9 @@ def supervised_sequence_mining(filepath1, filepath2, k):
     Root = Node('root', cursor)
     # Start Search
     valid_list = {}
-    lower_bound = 0
-    min_score = 1
     parameter = [k]
     for item in items:
         Depth_First(item, items, new_trans_list, Root, parameter, valid_list)
-    # Output All Frequent Sequence #
-    # print(len(valid_list.keys()))
     result = []
     for key in valid_list.keys():
         result = result + valid_list[key]
@@ -183,6 +179,7 @@ def Depth_First(item, items, new_trans_list, parent, parameter, valid_list):
     new_node = Node([item, support, score], new_cursor, parent)
     # print(new_node.item)
     # print(new_node.dataset)
+    # Get parameters
     key = score
     score_list = valid_list.keys()
     # print(score_list)
@@ -193,9 +190,15 @@ def Depth_First(item, items, new_trans_list, parent, parameter, valid_list):
     lower_bound = P * min_score / coefficient
     if support[0] < lower_bound:
         return 0
+    # Start comparision
     if len(valid_list) < k:
         try:
             valid_list[key].append(new_node)
+            # Add closed constraint
+            delete = Check_Closed_Constraint(valid_list[key])
+            if delete:
+                for node in delete:
+                    valid_list[key].remove(node)
         except:
             valid_list[key] = [new_node]
         # Start new search
@@ -206,6 +209,11 @@ def Depth_First(item, items, new_trans_list, parent, parameter, valid_list):
         if score >= min_score:
             try:
                 valid_list[key].append(new_node)
+                # Add closed constraint
+                delete = Check_Closed_Constraint(valid_list[key])
+                if delete:
+                    for node in delete:
+                        valid_list[key].remove(node)
             except:
                 valid_list[key] = [new_node]
             if len(valid_list) > k:
@@ -250,8 +258,49 @@ def All_Frequent_Sequence(node_list):
     return all_sequence
 
 
+def Check_Closed_Constraint(node_list):
+    transactions = All_Frequent_Sequence(node_list)
+    output_sequence = []
+    for sequence in transactions:
+        output = [element[0] for element in sequence]
+        output_sequence.append(output)
+    my_return_list = []
+    for transaction in range(len(output_sequence)):
+        number = 0
+        for compare in range(len(output_sequence)):
+            if list_intersections(output_sequence[transaction],
+                                  output_sequence[compare]):
+                number += 1
+                if number > 1:
+                    my_return_list.append(node_list[transaction])
+                    break
+    return my_return_list
+
+
+def list_intersections(list1, list2):
+    """ Returns if list1 is subsequence of list2 """
+    len1 = len(list1)
+    len2 = len(list2)
+    if len1 > len2:
+        return False
+    else:
+        short = list1
+        long = list2
+    i = j = 0
+    while (i < len(short)) and (j < len(long)):
+        if short[i] == long[j]:
+            i += 1
+            j += 1
+        else:
+            j += 1
+    if i == len(short):
+        return True
+    else:
+        return False
+
+a = 2
 def main():
-    a = 1
+    
     if a == 1:
         pos_filepath = sys.argv[1]  # filepath to positive class file
         neg_filepath = sys.argv[2]  # filepath to negative class file

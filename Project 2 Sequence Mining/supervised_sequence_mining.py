@@ -116,6 +116,8 @@ def supervised_sequence_mining(filepath1, filepath2, k):
     parameter = [k]
     for item in items:
         Depth_First(item, items, new_trans_list, Root, parameter, valid_list)
+    # Output All Frequent Sequence #
+    # print(len(valid_list.keys()))
     result = []
     for key in valid_list.keys():
         result = result + valid_list[key]
@@ -275,7 +277,6 @@ def Check_Closed_Constraint(node_list):
                 number += 1
                 if number > 1:
                     my_return_list.append(node_list[transaction])
-                    break
     return my_return_list
 
 
