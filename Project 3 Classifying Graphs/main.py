@@ -8,6 +8,7 @@ import os
 import sys
 import numpy
 from sklearn import naive_bayes
+from sklearn import tree
 from sklearn import metrics
 
 from gspan_mining import gSpan
@@ -119,54 +120,102 @@ class ConfidencePositiveGraphs(PatternGraphs):
 		sum_sup = pos_sup + neg_sup
 		confidence = pos_sup / sum_sup
 		keys = self.patterns.keys()
-		min_conf = 2
-		for key in keys:
-			if key[0] < min_conf:
-				min_conf = key[0]
-		if min_conf == 2:
-			min_conf = 0
-		# if (len(self.patterns) >= self.k):
+		if len(keys) < self.k:
+			min_conf = -1
+		else:
+			conf_list = [key[0] for key in keys]
+			min_conf = min(conf_list)
 		if (confidence < min_conf) or (sum_sup < self.minsup):
 			return 0
-		# print("####", min_conf, (confidence,sum_sup))
 		try:
 			self.patterns[(confidence, sum_sup)].append((dfs_code, gid_subsets))
 		except:
 			self.patterns[(confidence, sum_sup)] = [(dfs_code, gid_subsets)]
 			if (len(self.patterns) > self.k):
 				keys = self.patterns.keys()
-				min_support = 10000
-				for key in keys:
-					if (key[0] == min_conf) and (key[1] < min_support):
-						min_support = key[1]
-				self.patterns.pop((min_conf, min_support))
-		# print(self.patterns.keys())
-		# print()
+				conf_list = [key[0] for key in keys]
+				min_conf = min(conf_list)
+				sup_list = [key[1] for key in keys if key[0] == min_conf]
+				min_sup = min(sup_list)
+				self.patterns.pop((min_conf, min_sup))
+		# print(keys)
 
 	# Prunes any pattern that is not frequent in the positive class
 	def prune(self, gid_subsets):
 		pos_sup = len(gid_subsets[0])
 		neg_sup = len(gid_subsets[1])
 		sum_sup = pos_sup + neg_sup
-		# confidence = pos_sup / sum_sup
 		return sum_sup < self.minsup
 
-		# keys = self.patterns.keys()
-		# min_conf = 2
-		# for key in keys:
-		# 	if key[0] < min_conf:
-		# 		min_conf = key[0]
-		# if min_conf == 2:
-		# 	min_conf = 0
-		# print(min_conf)
-		# return (len(self.patterns) >= self.k) and (confidence < min_conf)
+
+class ConfidencePositiveGraphs2(PatternGraphs):
+
+	def __init__(self, k, minsup, database, subsets):
+		"""
+		Initialize the task.
+		:param minsup: the minimum positive support
+		:param database: the graph database
+		:param subsets: the subsets (train and/or test sets for positive and negative class) of graph ids.
+		"""
+		super().__init__(database)
+		self.patterns = {}  # The patterns found in the end (as dfs codes represented by strings) with their cover (as a list of graph ids).
+		self.k = k
+		self.minsup = minsup
+		self.gid_subsets = subsets
+
+	# Stores any pattern found that has not been pruned
+	def store(self, dfs_code, gid_subsets):
+		pos_sup = len(gid_subsets[0])
+		neg_sup = len(gid_subsets[2])
+		sum_sup = pos_sup + neg_sup
+		confidence = pos_sup / sum_sup
+		keys = self.patterns.keys()
+		if len(keys) < self.k:
+			min_conf = -1
+		else:
+			conf_list = [key[0] for key in keys]
+			min_conf = min(conf_list)
+		if (confidence < min_conf) or (sum_sup < self.minsup):
+			return 0
+		try:
+			self.patterns[(confidence, sum_sup)].append((dfs_code, gid_subsets))
+		except:
+			self.patterns[(confidence, sum_sup)] = [(dfs_code, gid_subsets)]
+			if (len(self.patterns) > self.k):
+				keys = self.patterns.keys()
+				conf_list = [key[0] for key in keys]
+				min_conf = min(conf_list)
+				sup_list = [key[1] for key in keys if key[0] == min_conf]
+				min_sup = min(sup_list)
+				self.patterns.pop((min_conf, min_sup))
+		# print(keys)
+
+	# Prunes any pattern that is not frequent in the positive class
+	def prune(self, gid_subsets):
+		pos_sup = len(gid_subsets[0])
+		neg_sup = len(gid_subsets[2])
+		sum_sup = pos_sup + neg_sup
+		return sum_sup < self.minsup
+
+	def create_fm_col(self, all_gids, subset_gids):
+		subset_gids = set(subset_gids)
+		bools = []
+		for i, val in enumerate(all_gids):
+			if val in subset_gids:
+				bools.append(1)
+			else:
+				bools.append(0)
+		return bools
 
 	def get_feature_matrices(self):
 		matrices = [[] for _ in self.gid_subsets]
-		for pattern, gid_subsets in self.patterns:
-			for i, gid_subset in enumerate(gid_subsets):
-				matrices[i].append(self.create_fm_col(self.gid_subsets[i], gid_subset))
+		keys = self.patterns.keys()
+		for key in keys:
+			for pattern, gid_subsets in self.patterns[key]:
+				for i, gid_subset in enumerate(gid_subsets):
+					matrices[i].append(self.create_fm_col(self.gid_subsets[i], gid_subset))
 		return [numpy.array(matrix).transpose() for matrix in matrices]
+
 
 def example1():
 	"""
@@ -174,11 +223,19 @@ def example1():
 	with a minimum positive support of minsup and prints them.
 	"""
 
-	args = sys.argv
-	database_file_name_pos = args[1]  # First parameter: path to positive class file
-	database_file_name_neg = args[2]  # Second parameter: path to negative class file
-	k = int(args[3])
-	minsup = int(args[4])  # Third parameter: minimum support
+	a = 1
+	if a == 1:
+		args = sys.argv
+		database_file_name_pos = args[1]  # First parameter: path to positive class file
+		database_file_name_neg = args[2]  # Second parameter: path to negative class file
+		k = int(args[3])
+		minsup = int(args[4])  # Third parameter: minimum support
+	else:
+		database_file_name_pos = 'data/molecules-small.pos'
+		database_file_name_neg = 'data/molecules-small.neg'
+		k = 5
+		minsup = 5
+
 
 	if not os.path.exists(database_file_name_pos):
 		print('{} does not exist.'.format(database_file_name_pos))
@@ -214,7 +271,7 @@ def example2():
 	"""
 
 
-	a = 11
+	a = 1
 
 	if a == 1:
 		args = sys.argv
@@ -224,8 +281,8 @@ def example2():
 		minsup = int(args[4])  # Third parameter: minimum support (note: this parameter will be k in case of top-k mining)
 		nfolds = int(args[5])  # Fourth parameter: number of folds to use in the k-fold cross-validation.
 	else:
-		database_file_name_pos = 'data/molecules-small.neg'
-		database_file_name_neg = 'data/molecules-small.pos'
+		database_file_name_pos = 'data/molecules-small.pos'
+		database_file_name_neg = 'data/molecules-small.neg'
 		k = 5
 		minsup = 5
 		nfolds = 4
@@ -269,10 +326,21 @@ def example2():
 			# Printing fold number:
 			print('fold {}'.format(i+1))
 			train_and_evaluate(k, minsup, graph_database, subsets)
+			# if i == 2:
+			# 	task = ConfidencePositiveGraphs2(k, minsup, graph_database, subsets)  # Creating task
+			# 	gSpan(task).run()  # Running gSpan
+			# 	# Printing frequent patterns along with their positive support:
+			# 	keys = task.patterns.keys()
+			# 	for key in keys:
+			# 		for pattern, _ in task.patterns[key]:
+			# 			confidence = key[0]
+			# 			support = key[1] # This will have to be replaced by the confidence and support on both classes
+			# 			print('{} {} {}'.format('#', confidence, support))
+			# 			# print('{} {} {}'.format(pattern, confidence, support))
 
 
 def train_and_evaluate(k, minsup, database, subsets):
-	task = ConfidencePositiveGraphs(k, minsup, database, subsets)  # Creating task
+	task = ConfidencePositiveGraphs2(k, minsup, database, subsets)  # Creating task
 	gSpan(task).run()  # Running gSpan
 	# Creating feature matrices for training and testing:
 	features = task.get_feature_matrices()
@@ -281,7 +349,8 @@ def train_and_evaluate(k, minsup, database, subsets):
 	test_fm = numpy.concatenate((features[1], features[3]))  # Testing feature matrix
 	test_labels = numpy.concatenate((numpy.full(len(features[1]), 1, dtype=int), numpy.full(len(features[3]), -1, dtype=int)))  # Testing labels
 
-	classifier = naive_bayes.GaussianNB()  # Creating model object
+	classifier = tree.DecisionTreeClassifier(random_state=1)
+	# classifier = naive_bayes.GaussianNB(random_state=1)  # Creating model object
 	classifier.fit(train_fm, train_labels)  # Training model
 
 	predicted = classifier.predict(test_fm)  # Using model to predict labels of testing data
@@ -289,9 +358,15 @@ def train_and_evaluate(k, minsup, database, subsets):
 	accuracy = metrics.accuracy_score(test_labels, predicted)  # Computing accuracy:
 
 	# Printing frequent patterns along with their positive support:
-	for pattern, gid_subsets in task.patterns:
-		pos_support = len(gid_subsets[0])
-		print('{} {}'.format(pattern, pos_support))
+
+	
+	keys = task.patterns.keys()
+	# print(len(keys))
+	for key in keys:
+		for pattern, _ in task.patterns[key]:
+			confidence = key[0]
+			support = key[1] # This will have to be replaced by the confidence and support on both classes
+			print('{} {} {}'.format(pattern, confidence, support))
 	# printing classification results:
 	print(predicted)
 	print('accuracy: {}'.format(accuracy))
@@ -299,5 +374,10 @@ def train_and_evaluate(k, minsup, database, subsets):
 
 
 if __name__ == '__main__':
-	# example1()
-	example2()
+	a = 11
+	
+	
+	if a == 1:
+		example1()
+	else:
+		example2()
