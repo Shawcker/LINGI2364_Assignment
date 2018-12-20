@@ -97,6 +97,77 @@ class FrequentPositiveGraphs(PatternGraphs):
 		return [numpy.array(matrix).transpose() for matrix in matrices]
 
 
+class ConfidencePositiveGraphs(PatternGraphs):
+
+	def __init__(self, k, minsup, database, subsets):
+		"""
+		Initialize the task.
+		:param minsup: the minimum positive support
+		:param database: the graph database
+		:param subsets: the subsets (train and/or test sets for positive and negative class) of graph ids.
+		"""
+		super().__init__(database)
+		self.patterns = {}  # The patterns found in the end (as dfs codes represented by strings) with their cover (as a list of graph ids).
+		self.k = k
+		self.minsup = minsup
+		self.gid_subsets = subsets
+
+	# Stores any pattern found that has not been pruned
+	def store(self, dfs_code, gid_subsets):
+		pos_sup = len(gid_subsets[0])
+		neg_sup = len(gid_subsets[1])
+		sum_sup = pos_sup + neg_sup
+		confidence = pos_sup / sum_sup
+		keys = self.patterns.keys()
+		min_conf = 2
+		for key in keys:
+			if key[0] < min_conf:
+				min_conf = key[0]
+		if min_conf == 2:
+			min_conf = 0
+		# if (len(self.patterns) >= self.k):
+		if (confidence < min_conf) or (sum_sup < self.minsup):
+			return 0
+		# print("####", min_conf, (confidence,sum_sup))
+		try:
+			self.patterns[(confidence, sum_sup)].append((dfs_code, gid_subsets))
+		except:
+			self.patterns[(confidence, sum_sup)] = [(dfs_code, gid_subsets)]
+			if (len(self.patterns) > self.k):
+				keys = self.patterns.keys()
+				min_support = 10000
+				for key in keys:
+					if (key[0] == min_conf) and (key[1] < min_support):
+						min_support = key[1]
+				self.patterns.pop((min_conf, min_support))
+		# print(self.patterns.keys())
+		# print()
+
+	# Prunes any pattern that is not frequent in the positive class
+	def prune(self, gid_subsets):
+		pos_sup = len(gid_subsets[0])
+		neg_sup = len(gid_subsets[1])
+		sum_sup = pos_sup + neg_sup
+		# confidence = pos_sup / sum_sup
+		return sum_sup < self.minsup
+
+		# keys = self.patterns.keys()
+		# min_conf = 2
+		# for key in keys:
+		# 	if key[0] < min_conf:
+		# 		min_conf = key[0]
+		# if min_conf == 2:
+		# 	min_conf = 0
+		# print(min_conf)
+		# return (len(self.patterns) >= self.k) and (confidence < min_conf)
+
+	def get_feature_matrices(self):
+		matrices = [[] for _ in self.gid_subsets]
+		for pattern, gid_subsets in self.patterns:
+			for i, gid_subset in enumerate(gid_subsets):
+				matrices[i].append(self.create_fm_col(self.gid_subsets[i], gid_subset))
+		return [numpy.array(matrix).transpose() for matrix in matrices]
+
 def example1():
 	"""
 	Runs gSpan with the specified positive and negative graphs, finds all frequent subgraphs in the positive class
@@ -106,7 +177,8 @@ def example1():
 	args = sys.argv
 	database_file_name_pos = args[1]  # First parameter: path to positive class file
 	database_file_name_neg = args[2]  # Second parameter: path to negative class file
-	minsup = int(args[3])  # Third parameter: minimum support
+	k = int(args[3])
+	minsup = int(args[4])  # Third parameter: minimum support
 
 	if not os.path.exists(database_file_name_pos):
 		print('{} does not exist.'.format(database_file_name_pos))
@@ -118,16 +190,18 @@ def example1():
 	graph_database = GraphDatabase()  # Graph database object
 	pos_ids = graph_database.read_graphs(database_file_name_pos)  # Reading positive graphs, adding them to database and getting ids
 	neg_ids = graph_database.read_graphs(database_file_name_neg)  # Reading negative graphs, adding them to database and getting ids
-
 	subsets = [pos_ids, neg_ids]  # The ids for the positive and negative labelled graphs in the database
-	task = FrequentPositiveGraphs(minsup, graph_database, subsets)  # Creating task
+	task = ConfidencePositiveGraphs(k, minsup, graph_database, subsets)  # Creating task
 
 	gSpan(task).run()  # Running gSpan
 
 	# Printing frequent patterns along with their positive support:
-	for pattern, gid_subsets in task.patterns:
-		pos_support = len(gid_subsets[0])  # This will have to be replaced by the confidence and support on both classes
-		print('{} {}'.format(pattern, pos_support))
+	keys = task.patterns.keys()
+	for key in keys:
+		for pattern, _ in task.patterns[key]:
+			confidence = key[0]
+			support = key[1] # This will have to be replaced by the confidence and support on both classes
+			print('{} {} {}'.format(pattern, confidence, support))
 
 
 def example2():
@@ -139,11 +213,22 @@ def example2():
 	Performs a k-fold cross-validation.
 	"""
 
-	args = sys.argv
-	database_file_name_pos = args[1]  # First parameter: path to positive class file
-	database_file_name_neg = args[2]  # Second parameter: path to negative class file
-	minsup = int(args[3])  # Third parameter: minimum support (note: this parameter will be k in case of top-k mining)
-	nfolds = int(args[4])  # Fourth parameter: number of folds to use in the k-fold cross-validation.
+
+	a = 11
+
+	if a == 1:
+		args = sys.argv
+		database_file_name_pos = args[1]  # First parameter: path to positive class file
+		database_file_name_neg = args[2]  # Second parameter: path to negative class file
+		k  = int(args[3])
+		minsup = int(args[4])  # Third parameter: minimum support (note: this parameter will be k in case of top-k mining)
+		nfolds = int(args[5])  # Fourth parameter: number of folds to use in the k-fold cross-validation.
+	else:
+		database_file_name_pos = 'data/molecules-small.neg'
+		database_file_name_neg = 'data/molecules-small.pos'
+		k = 5
+		minsup = 5
+		nfolds = 4
 
 	if not os.path.exists(database_file_name_pos):
 		print('{} does not exist.'.format(database_file_name_pos))
@@ -183,14 +268,12 @@ def example2():
 			]
 			# Printing fold number:
 			print('fold {}'.format(i+1))
-			train_and_evaluate(minsup, graph_database, subsets)
+			train_and_evaluate(k, minsup, graph_database, subsets)
 
 
-def train_and_evaluate(minsup, database, subsets):
-	task = FrequentPositiveGraphs(minsup, database, subsets)  # Creating task
-
+def train_and_evaluate(k, minsup, database, subsets):
+	task = ConfidencePositiveGraphs(k, minsup, database, subsets)  # Creating task
 	gSpan(task).run()  # Running gSpan
-
 	# Creating feature matrices for training and testing:
 	features = task.get_feature_matrices()
 	train_fm = numpy.concatenate((features[0], features[2]))  # Training feature matrix
@@ -216,5 +299,5 @@ def train_and_evaluate(minsup, database, subsets):
 
 
 if __name__ == '__main__':
-	example1()
-	# example2()
+	# example1()
+	example2()
