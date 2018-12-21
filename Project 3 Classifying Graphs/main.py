@@ -6,6 +6,7 @@ from __future__ import print_function
 
 import os
 import sys
+import copy
 import numpy
 from sklearn import naive_bayes
 from sklearn import tree
@@ -115,6 +116,7 @@ class ConfidencePositiveGraphs(PatternGraphs):
 
 	# Stores any pattern found that has not been pruned
 	def store(self, dfs_code, gid_subsets):
+		print(gid_subsets)
 		pos_sup = len(gid_subsets[0])
 		neg_sup = len(gid_subsets[1])
 		sum_sup = pos_sup + neg_sup
@@ -165,6 +167,7 @@ class ConfidencePositiveGraphs2(PatternGraphs):
 
 	# Stores any pattern found that has not been pruned
 	def store(self, dfs_code, gid_subsets):
+		# print(gid_subsets)
 		pos_sup = len(gid_subsets[0])
 		neg_sup = len(gid_subsets[2])
 		sum_sup = pos_sup + neg_sup
@@ -217,13 +220,71 @@ class ConfidencePositiveGraphs2(PatternGraphs):
 		return [numpy.array(matrix).transpose() for matrix in matrices]
 
 
+class ConfidencePositiveGraphs3(PatternGraphs):
+
+	def __init__(self, k, minsup, database, subsets):
+		"""
+		Initialize the task.
+		:param minsup: the minimum positive support
+		:param database: the graph database
+		:param subsets: the subsets (train and/or test sets for positive and negative class) of graph ids.
+		"""
+		super().__init__(database)
+		self.patterns = {}  # The patterns found in the end (as dfs codes represented by strings) with their cover (as a list of graph ids).
+		self.k = k
+		self.minsup = minsup
+		self.gid_subsets = subsets
+
+	# Stores any pattern found that has not been pruned
+	def store(self, dfs_code, gid_subsets):
+		# print(type(dfs_code))
+		pos_sup = len(gid_subsets[0])
+		neg_sup = len(gid_subsets[2])
+		sum_sup = pos_sup + neg_sup
+		pos_conf = pos_sup / sum_sup
+		neg_conf = neg_sup / sum_sup
+		if pos_conf >= neg_conf:
+			confidence = pos_conf
+			flag = 'pos'
+		else:
+			confidence = neg_conf
+			flag = 'neg'
+		keys = self.patterns.keys()
+		if len(keys) < self.k:
+			min_conf = -1
+		else:
+			conf_list = [key[0] for key in keys]
+			min_conf = min(conf_list)
+		if (confidence < min_conf) or (sum_sup < self.minsup):
+			return 0
+		try:
+			self.patterns[(confidence, sum_sup)].append((dfs_code, gid_subsets, flag))
+		except:
+			self.patterns[(confidence, sum_sup)] = [(dfs_code, gid_subsets, flag)]
+			if (len(self.patterns) > self.k):
+				keys = self.patterns.keys()
+				conf_list = [key[0] for key in keys]
+				min_conf = min(conf_list)
+				sup_list = [key[1] for key in keys if key[0] == min_conf]
+				min_sup = min(sup_list)
+				self.patterns.pop((min_conf, min_sup))
+		# print(keys)
+
+	# Prunes any pattern that is not frequent in the positive class
+	def prune(self, gid_subsets):
+		pos_sup = len(gid_subsets[0])
+		neg_sup = len(gid_subsets[2])
+		sum_sup = pos_sup + neg_sup
+		return sum_sup < self.minsup
+
+
 def example1():
 	"""
 	Runs gSpan with the specified positive and negative graphs, finds all frequent subgraphs in the positive class
 	with a minimum positive support of minsup and prints them.
 	"""
 
-	a = 1
+	a = 11
 	if a == 1:
 		args = sys.argv
 		database_file_name_pos = args[1]  # First parameter: path to positive class file
@@ -248,6 +309,7 @@ def example1():
 	pos_ids = graph_database.read_graphs(database_file_name_pos)  # Reading positive graphs, adding them to database and getting ids
 	neg_ids = graph_database.read_graphs(database_file_name_neg)  # Reading negative graphs, adding them to database and getting ids
 	subsets = [pos_ids, neg_ids]  # The ids for the positive and negative labelled graphs in the database
+	print(subsets)
 	task = ConfidencePositiveGraphs(k, minsup, graph_database, subsets)  # Creating task
 
 	gSpan(task).run()  # Running gSpan
@@ -255,10 +317,11 @@ def example1():
 	# Printing frequent patterns along with their positive support:
 	keys = task.patterns.keys()
 	for key in keys:
-		for pattern, _ in task.patterns[key]:
+		for pattern, a in task.patterns[key]:
 			confidence = key[0]
 			support = key[1] # This will have to be replaced by the confidence and support on both classes
 			print('{} {} {}'.format(pattern, confidence, support))
+			print(a)
 
 
 def example2():
@@ -269,9 +332,7 @@ def example2():
 	the test set.
 	Performs a k-fold cross-validation.
 	"""
-
-
-	a = 1
+	a = 11
 
 	if a == 1:
 		args = sys.argv
@@ -326,17 +387,6 @@ def example2():
 			# Printing fold number:
 			print('fold {}'.format(i+1))
 			train_and_evaluate(k, minsup, graph_database, subsets)
-			# if i == 2:
-			# 	task = ConfidencePositiveGraphs2(k, minsup, graph_database, subsets)  # Creating task
-			# 	gSpan(task).run()  # Running gSpan
-			# 	# Printing frequent patterns along with their positive support:
-			# 	keys = task.patterns.keys()
-			# 	for key in keys:
-			# 		for pattern, _ in task.patterns[key]:
-			# 			confidence = key[0]
-			# 			support = key[1] # This will have to be replaced by the confidence and support on both classes
-			# 			print('{} {} {}'.format('#', confidence, support))
-			# 			# print('{} {} {}'.format(pattern, confidence, support))
 
 
 def train_and_evaluate(k, minsup, database, subsets):
@@ -363,21 +413,172 @@ def train_and_evaluate(k, minsup, database, subsets):
 	keys = task.patterns.keys()
 	# print(len(keys))
 	for key in keys:
-		for pattern, _ in task.patterns[key]:
+		for pattern, a in task.patterns[key]:
 			confidence = key[0]
 			support = key[1] # This will have to be replaced by the confidence and support on both classes
 			print('{} {} {}'.format(pattern, confidence, support))
+			# print(a)
 	# printing classification results:
 	print(predicted)
 	print('accuracy: {}'.format(accuracy))
 	print()  # Blank line to indicate end of fold.
 
 
+def example3():
+	a = 1
+
+	if a == 1:
+		args = sys.argv
+		database_file_name_pos = args[1]  # First parameter: path to positive class file
+		database_file_name_neg = args[2]  # Second parameter: path to negative class file
+		k  = int(args[3])
+		minsup = int(args[4])  # Third parameter: minimum support (note: this parameter will be k in case of top-k mining)
+		nfolds = int(args[5])  # Fourth parameter: number of folds to use in the k-fold cross-validation.
+	else:
+		database_file_name_pos = 'data/molecules-small.pos'
+		database_file_name_neg = 'data/molecules-small.neg'
+		k = 5
+		minsup = 5
+		nfolds = 4
+
+	if not os.path.exists(database_file_name_pos):
+		print('{} does not exist.'.format(database_file_name_pos))
+		sys.exit()
+	if not os.path.exists(database_file_name_neg):
+		print('{} does not exist.'.format(database_file_name_neg))
+		sys.exit()
+
+	graph_database = GraphDatabase()  # Graph database object
+	pos_ids = graph_database.read_graphs(database_file_name_pos)  # Reading positive graphs, adding them to database and getting ids
+	# print(graph_database._graphs[0].display())
+	neg_ids = graph_database.read_graphs(database_file_name_neg)  # Reading negative graphs, adding them to database and getting ids
+
+	# If less than two folds: using the same set as training and test set (note this is not an accurate way to evaluate the performances!)
+	if nfolds < 2:
+		subsets = [
+			pos_ids,  # Positive training set
+			pos_ids,  # Positive test set
+			neg_ids,  # Negative training set
+			neg_ids  # Negative test set
+		]
+		# Printing fold number:
+		print('fold {}'.format(1))
+		train_and_evaluate(minsup, graph_database, subsets)
+
+	# Otherwise: performs k-fold cross-validation:
+	else:
+		pos_fold_size = len(pos_ids) // nfolds
+		neg_fold_size = len(neg_ids) // nfolds
+		for i in range(nfolds):
+			# Use fold as test set, the others as training set for each class;
+			# identify all the subsets to be maintained by the graph mining algorithm.
+			subsets = [
+				numpy.concatenate((pos_ids[:i * pos_fold_size], pos_ids[(i + 1) * pos_fold_size:])),  # Positive training set
+				pos_ids[i * pos_fold_size:(i + 1) * pos_fold_size],  # Positive test set
+				numpy.concatenate((neg_ids[:i * neg_fold_size], neg_ids[(i + 1) * neg_fold_size:])),  # Negative training set
+				neg_ids[i * neg_fold_size:(i + 1) * neg_fold_size],  # Negative test set
+			]
+			# Printing fold number:
+			print('fold {}'.format(i+1))
+			Sequential_Covering(k, minsup, graph_database, subsets)
+
+
+def Sequential_Covering(k, minsup, database, subsets):
+	origin_label = copy.deepcopy([subsets[1], subsets[3]])
+	new_subsets = []
+	for subset in subsets:
+		if type(subset) != type([]):
+			new_subset = subset.tolist()
+			new_subsets.append(new_subset)
+		else:
+			new_subsets.append(subset)
+	pattern_dic = {}
+	test_pred = {}
+	for _ in range(k):
+		task = ConfidencePositiveGraphs3(1, minsup, database, new_subsets)  # Creating task
+		gSpan(task).run()  # Running gSpan
+		new_pattern = task.patterns
+		keys = new_pattern.keys()
+		for key in keys:
+			# print(key)
+			pattern_list = new_pattern[key]
+			if len(pattern_list) == 1:
+				pattern = pattern_list[0]
+			else:
+				DFS_list = [pattern[0] for pattern in pattern_list]
+				min_DFS = min(DFS_list)
+				DFS_index = DFS_list.index(min_DFS)
+				# get lowest
+				pattern = pattern_list[DFS_index]
+			# print(pattern[0], key)
+			pattern_dic[pattern[0]] = (pattern[2],key)
+			example_list = pattern[1]
+			test_list = example_list[1] + example_list[3]
+			# print(example_list)
+			for item in test_list:
+				test_pred[item] = pattern[2]
+			new_subsets = RemoveX1FromX2(example_list, new_subsets)
+	
+	
+	test_list = new_subsets[1] + new_subsets[3]
+	# print(new_subsets)
+	length_pos, length_neg = len(new_subsets[0]), len(new_subsets[2])
+	if length_pos >= length_neg:
+		default = 'pos'
+	else:
+		default = 'neg'
+	for item in test_list:
+			test_pred[item] = default
+	# print('dic', pattern_dic)
+	# print(test_pred)
+	keys = test_pred.keys()
+	key_list = [key for key in keys]
+	key_list.sort()
+	# print(key_list)
+	test_prediction = [test_pred[key] for key in key_list]
+	# print patterns
+	keys = pattern_dic.keys()
+	for key in keys:
+		print('{} {} {}'.format(key, pattern_dic[key][1][0], pattern_dic[key][1][1]))
+	# print prediction
+	out_pred = []
+	for pred in test_prediction:
+		if pred == 'pos':
+			out_pred.append(1)
+		else:
+			out_pred.append(-1)
+	print(out_pred)
+	# print accuracy
+	keys = test_pred.keys()
+	counter = 0
+	# print(origin_label)
+	for key in keys:
+		if key in origin_label[0]:
+			if test_pred[key] == 'pos':
+				counter += 1
+		if key in origin_label[1]:
+			if test_pred[key] == 'neg':
+				counter += 1
+	accuracy = counter / len(keys)
+	print('accuracy: {}'.format(accuracy))
+	print()  # Blank line to indicate end of fold.
+
+		
+
+
+def RemoveX1FromX2(X1, X2):
+	for index in range(len(X1)):
+		sub1, sub2 = X1[index], X2[index]
+		for item in sub1:
+			sub2.remove(item)
+	return X2
+
+
 if __name__ == '__main__':
-	a = 11
+	a = 2
 	
 	
 	if a == 1:
-		example1()
-	else:
 		example2()
+	else:
+		example3()
